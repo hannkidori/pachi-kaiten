@@ -1,9 +1,10 @@
 import '../models/entry.dart';
 import '../models/machine.dart';
 import '../models/session.dart';
-import '../models/store.dart';
+import '../models/trace.dart';
 import '../repositories/entry_repository.dart';
 import '../repositories/session_repository.dart';
+import '../repositories/trace_repository.dart';
 import 'rotation_calc.dart';
 
 /// 計測フローのオーケストレーション。
@@ -16,11 +17,13 @@ import 'rotation_calc.dart';
 class SessionService {
   final SessionRepository sessions;
   final EntryRepository entries;
+  final TraceRepository traces;
   final DateTime Function() clock;
 
   SessionService({
     required this.sessions,
     required this.entries,
+    required this.traces,
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
 
@@ -32,20 +35,18 @@ class SessionService {
 
   /// 新しいセッションを開始し、start イベントを追記する。
   ///
-  /// [store] / [machine] の換金率・貸玉は開始時点でコピーして固定する。
+  /// [ballPrice] は開始時点のグローバル貸玉設定をコピーして固定する。
   Future<Session> start({
-    required Store store,
     required Machine machine,
+    required double ballPrice,
     required int startCounter,
     int addUnit = 1000,
   }) async {
     final now = clock();
     final session = await sessions.insert(Session(
       date: _date(now),
-      storeId: store.id!,
-      machineId: machine.id,
-      exchangeRate: store.exchangeRate,
-      ballPrice: store.ballPrice,
+      machineId: machine.id!,
+      ballPrice: ballPrice,
       addUnit: addUnit,
       state: SessionState.active,
       startedAt: _iso(now),
@@ -143,8 +144,8 @@ class SessionService {
     await sessions.delete(sessionId);
   }
 
-  /// 終了。回収額を確定し closed にする。
-  Future<Session> close(Session session, {required int recovery}) async {
+  /// 終了。回収額(任意)を確定し closed にする。
+  Future<Session> close(Session session, {int? recovery}) async {
     final now = clock();
     final closed = session.copyWith(
       state: SessionState.closed,
@@ -156,12 +157,67 @@ class SessionService {
   }
 
   /// セッションの現在統計を計算する。
+  ///
+  /// ボーダーは機種の該当スロット。未入力の場合は 0(判定・EV は出ない)。
   Future<RotationStats> stats(Session session, Machine machine) async {
     final list = await entries.bySession(session.id!);
     return computeStats(
       entries: list,
-      catalogBorder: machine.borderForRate(session.exchangeRate),
+      border: machine.borderFor(session.ballPrice) ?? 0,
       ballPrice: session.ballPrice,
+    );
+  }
+
+  /// 終了の集約点。終了 / 台移動 / 復帰カード終了の 3 経路すべてがここを通る。
+  ///
+  /// - count イベントが 1 件も無い(極端に短い)セッションは足跡を残さず破棄する。
+  /// - それ以外は close して計測データから足跡を 1 行自動保存する。
+  ///   回収額 [recovery] を渡せば P/L(回収 − 現金投資)も記録、null ならスキップ扱い。
+  ///
+  /// 保存した [Trace] を返す(破棄した場合は null)。
+  Future<Trace?> endAndLog(
+    Session session,
+    Machine machine, {
+    int? recovery,
+  }) async {
+    final list = await entries.bySession(session.id!);
+    final hasCount = list.any((e) => e.type == EntryType.count);
+    if (!hasCount) {
+      await discard(session.id!);
+      return null;
+    }
+
+    await close(session, recovery: recovery);
+    final stats = computeStats(
+      entries: list,
+      border: machine.borderFor(session.ballPrice) ?? 0,
+      ballPrice: session.ballPrice,
+    );
+
+    final now = clock();
+    final trace = Trace(
+      date: session.date,
+      machineName: machine.name,
+      rotationRate: stats.rotationRate,
+      totalRotations: stats.totalRotations,
+      evYen: stats.expectedValue?.round(),
+      investYen: stats.cashInvest,
+      bonusCount: stats.bonusCount,
+      plYen: recovery == null ? null : recovery - stats.cashInvest,
+      createdAt: _iso(now),
+    );
+    final id = await traces.insert(trace);
+    return Trace(
+      id: id,
+      date: trace.date,
+      machineName: trace.machineName,
+      rotationRate: trace.rotationRate,
+      totalRotations: trace.totalRotations,
+      evYen: trace.evYen,
+      investYen: trace.investYen,
+      bonusCount: trace.bonusCount,
+      plYen: trace.plYen,
+      createdAt: trace.createdAt,
     );
   }
 }

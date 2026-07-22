@@ -52,7 +52,7 @@ class RotationChart extends StatelessWidget {
   Widget build(BuildContext context) {
     // 計測対象の区間(現金 + 消費玉>0 の持ち玉)を棒にする。計測外は描かない。
     final segs = stats.segments.where((s) => s.measured).toList();
-    final border = stats.effectiveBorder;
+    final border = stats.border;
     final barVals = segs.map((s) => s.ratePer1000 ?? 0).toList();
     final maxV = [border + 3, 1.0, ...barVals].reduce((a, b) => a > b ? a : b);
     final linePct = (border / maxV).clamp(0.0, 0.96);

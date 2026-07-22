@@ -1,17 +1,5 @@
 import '../models/entry.dart';
 
-/// 実質ボーダー B を求める。
-///
-/// [catalogBorder] はカタログ(4 円貸し基準)の該当換金率ボーダー、
-/// [ballPrice] は貸玉単価。1 円パチンコは千円あたりの玉数が 4 倍のため
-/// ボーダーも 4 倍になる。
-///
-///   B = catalogBorder × (4.0 / ballPrice)
-double effectiveBorder(double catalogBorder, double ballPrice) {
-  if (ballPrice <= 0) return catalogBorder;
-  return catalogBorder * (4.0 / ballPrice);
-}
-
 /// 1 本の区間(count イベント 1 回)を表す。グラフ描画に使う。
 class RotationSegment {
   final int rotations; // この区間の回転数(差分)
@@ -55,8 +43,8 @@ class RotationStats {
   /// 回転率 R = 計測回転 / (計測投資相当 / 1000)。計測投資 0 なら null。
   final double? rotationRate;
 
-  /// 実質ボーダー B。
-  final double effectiveBorder;
+  /// 判定ボーダー B(ユーザーが入力した機種スロットのボーダーそのまま)。
+  final double border;
 
   /// ボーダー比 = R − B。R が null のときは null。
   final double? borderDiff;
@@ -82,7 +70,7 @@ class RotationStats {
     required this.measuredRotations,
     required this.measuredInvest,
     required this.rotationRate,
-    required this.effectiveBorder,
+    required this.border,
     required this.borderDiff,
     required this.expectedValue,
     required this.segments,
@@ -101,14 +89,13 @@ class RotationStats {
 /// - R = 計測回転 / (計測投資相当 / 1000)。
 /// - EV = 計測回転 × (1000/B − 1000/R)。
 ///
-/// [catalogBorder] はカタログの該当換金率ボーダー、[ballPrice] は貸玉単価。
+/// [border] はユーザーが入力した機種スロットのボーダー(補正せずそのまま使う)、
+/// [ballPrice] は貸玉単価(持ち玉の円換算にのみ使用)。
 RotationStats computeStats({
   required List<Entry> entries,
-  required double catalogBorder,
+  required double border,
   required double ballPrice,
 }) {
-  final border = effectiveBorder(catalogBorder, ballPrice);
-
   int total = 0;
   int cashRot = 0;
   int cashInvest = 0;
@@ -182,7 +169,7 @@ RotationStats computeStats({
     measuredRotations: measuredRot,
     measuredInvest: measuredYen,
     rotationRate: r,
-    effectiveBorder: border,
+    border: border,
     borderDiff: borderDiff,
     expectedValue: ev,
     segments: segments,

@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (machine != null) {
         final stats = computeStats(
           entries: entries,
-          catalogBorder: machine.borderForRate(session.exchangeRate),
+          border: machine.borderFor(session.ballPrice) ?? 0,
           ballPrice: session.ballPrice,
         );
         final last = entries.isNotEmpty
@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: AppColors.surface,
         title: Text('このセッションを破棄しますか?',
             style: AppTheme.sans(size: 15, weight: FontWeight.w700)),
-        content: Text('計測中のデータは削除され、収支には記録されません。',
+        content: Text('計測中のデータは削除され、足跡には残りません。',
             style: AppTheme.sans(size: 13, color: AppColors.textStrong)),
         actions: [
           TextButton(
@@ -150,21 +150,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         style:
                             AppTheme.sans(size: 22, weight: FontWeight.w700)),
                     const SizedBox(height: 4),
-                    Text('回転率を計って収支に落とす',
+                    Text('回転率を計って足跡を残す',
                         style:
                             AppTheme.sans(size: 12, color: AppColors.muted)),
                     const SizedBox(height: 24),
                     if (_active != null) _restoreCard(_active!),
                     const Spacer(),
                     _primaryButton('計測開始', _startNew),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
+                    // 足跡・設定は控えめに(計器が主役)。テキストリンク相当の細い導線。
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Expanded(child: _navButton('履歴・収支', _openHistory)),
-                        const SizedBox(width: 10),
-                        Expanded(child: _navButton('設定', _openSettings)),
+                        _subtleLink('足跡', _openHistory),
+                        _dotSeparator(),
+                        _subtleLink('設定', _openSettings),
                       ],
                     ),
+                    const SizedBox(height: 4),
                   ],
                 ),
         ),
@@ -227,9 +230,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             children: [
               Expanded(
-                // 終了して収支入力へ = 回収額シートに直行する。
+                // 終了 = 足跡保存 + 任意回収額シートへ直行する。
                 child: _navButton(
-                  '終了して収支入力',
+                  '終了',
                   () => _openMeasurement(a.session, a.machine,
                       intent: MeasureIntent.end),
                   height: 44,
@@ -265,6 +268,22 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  /// 控えめなテキストリンク(足跡・設定)。計器を主役にするため目立たせない。
+  Widget _subtleLink(String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(label,
+            style: AppTheme.sans(size: 13, color: AppColors.muted)),
+      ),
+    );
+  }
+
+  Widget _dotSeparator() => Text('・',
+      style: AppTheme.sans(size: 13, color: AppColors.mutedDark));
 
   Widget _navButton(String label, VoidCallback onTap,
       {double height = 52, bool danger = false}) {

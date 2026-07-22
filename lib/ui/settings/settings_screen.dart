@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../logic/backup_files.dart';
-import '../../models/store.dart';
+import '../../models/machine.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
-import '../start/store_edit_sheet.dart';
+import '../start/machine_sheets.dart';
 
-/// 設定。店舗マスタ CRUD / 加算単位デフォルト / スリープ防止 /
-/// バックアップ(エクスポート・インポート)。
+/// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止 / 機種の編集・削除 /
+/// エクスポート。店舗プロファイルと収支インポートは廃止した。
 class SettingsScreen extends StatefulWidget {
   final AppServices services;
   const SettingsScreen({super.key, required this.services});
@@ -19,8 +19,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   AppServices get s => widget.services;
 
-  List<Store> _stores = [];
+  List<Machine> _machines = [];
   int _addUnit = 1000;
+  double _ballPrice = 4.0;
   bool _keepAwake = true;
   bool _loading = true;
   bool _busy = false;
@@ -32,13 +33,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    final stores = await s.stores.all();
+    final machines = await s.machines.all();
     final addUnit = await s.settings.addUnitDefault();
+    final ballPrice = await s.settings.ballPrice();
     final keepAwake = await s.settings.keepAwake();
     if (!mounted) return;
     setState(() {
-      _stores = stores;
+      _machines = machines;
       _addUnit = addUnit;
+      _ballPrice = ballPrice;
       _keepAwake = keepAwake;
       _loading = false;
     });
@@ -46,18 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _toast(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  Future<void> _addStore() async {
-    final res = await showStoreEditSheet(context, repo: s.stores);
-    if (res != null) _load();
-  }
-
-  Future<void> _editStore(Store store) async {
-    final res = await showStoreEditSheet(context, repo: s.stores, initial: store);
-    if (res != null) _load();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _setAddUnit(int unit) async {
@@ -65,9 +57,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _addUnit = unit);
   }
 
+  Future<void> _setBallPrice(double price) async {
+    await s.settings.setBallPrice(price);
+    setState(() => _ballPrice = price);
+  }
+
   Future<void> _setKeepAwake(bool on) async {
     await s.settings.setKeepAwake(on);
     setState(() => _keepAwake = on);
+  }
+
+  Future<void> _editMachine(Machine m) async {
+    final res = await showMachineEdit(context, machine: m);
+    if (res == null) return;
+    if (res.deleted) {
+      if (m.id != null) await s.machines.delete(m.id!);
+    } else if (res.saved != null) {
+      await s.machines.update(res.saved!);
+    }
+    await _load();
   }
 
   Future<void> _export() async {
@@ -77,46 +85,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await exportAndShare(s.backup);
     } catch (e) {
       _toast('エクスポートに失敗しました');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _import() async {
-    if (_busy) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('データをインポートしますか?',
-            style: AppTheme.sans(size: 15, weight: FontWeight.w700)),
-        content: Text(
-            '現在のデータは上書きされます。上書き前に自動でバックアップを取ってから取り込みます。',
-            style: AppTheme.sans(size: 13, color: AppColors.textStrong)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('やめる',
-                style: AppTheme.sans(size: 13, color: AppColors.textDim)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('ファイルを選ぶ',
-                style: AppTheme.sans(size: 13, color: AppColors.accent)),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || _busy) return;
-    setState(() => _busy = true);
-    try {
-      final res = await pickAndImport(s.backup);
-      if (res == ImportResult.success) {
-        _toast('インポートが完了しました');
-        await _load();
-      }
-    } catch (e) {
-      _toast('インポートに失敗しました(データは変更されていません)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -133,21 +101,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   _topBar(),
-                  _section('店舗マスタ'),
-                  for (final st in _stores) _storeRow(st),
-                  _addStoreRow(),
                   _section('計測'),
                   _addUnitRow(),
+                  _ballPriceRow(),
                   _keepAwakeRow(),
+                  _section('機種マスタ'),
+                  if (_machines.isEmpty)
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Text('登録された機種はありません',
+                          style: AppTheme.sans(
+                              size: 12, color: AppColors.mutedDark)),
+                    ),
+                  for (final m in _machines) _machineRow(m),
                   _section('バックアップ'),
                   _actionRow('エクスポート(共有)', Icons.ios_share, _export),
-                  _actionRow('インポート(復元)', Icons.download, _import),
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(
-                      'インポートは上書き前に自動でバックアップを取ります。',
-                      style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark),
+                      '登録機種と足跡を JSON で書き出します(機種変更時の持ち出し用)。',
+                      style:
+                          AppTheme.sans(size: 10.5, color: AppColors.mutedDark),
                     ),
                   ),
                 ],
@@ -180,49 +156,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _storeRow(Store st) {
-    return InkWell(
-      onTap: () => _editStore(st),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(st.name,
-                  style: AppTheme.sans(size: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-            ),
-            Text(
-              '${st.exchangeRate >= 3.99 ? '等価' : st.exchangeRate} ・ '
-              '${st.ballPrice.toInt()}円',
-              style: AppTheme.mono(size: 11, color: AppColors.muted),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedDark),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _addStoreRow() {
-    return InkWell(
-      onTap: _addStore,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          children: [
-            const Icon(Icons.add, size: 18, color: AppColors.accent),
-            const SizedBox(width: 8),
-            Text('店舗を追加',
-                style: AppTheme.sans(size: 14, color: AppColors.accent)),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _addUnitRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -233,6 +166,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _segment('1000', _addUnit == 1000, () => _setAddUnit(1000)),
           const SizedBox(width: 6),
           _segment('500', _addUnit == 500, () => _setAddUnit(500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _ballPriceRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          Text('貸玉', style: AppTheme.sans(size: 14)),
+          const Spacer(),
+          _segment('4円', _ballPrice > 1.5, () => _setBallPrice(4.0)),
+          const SizedBox(width: 6),
+          _segment('1円', _ballPrice <= 1.5, () => _setBallPrice(1.0)),
         ],
       ),
     );
@@ -272,6 +220,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             activeThumbColor: AppColors.accentSoft,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _machineRow(Machine m) {
+    String slot(double? v) => v == null ? '−' : v.toStringAsFixed(1);
+    return InkWell(
+      onTap: () => _editMachine(m),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(m.name,
+                  style: AppTheme.sans(size: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ),
+            Text('4円 ${slot(m.border4)} ・ 1円 ${slot(m.border1)}',
+                style: AppTheme.mono(size: 11, color: AppColors.muted)),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedDark),
+          ],
+        ),
       ),
     );
   }

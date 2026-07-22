@@ -7,10 +7,12 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../logic/anomaly.dart';
 import '../../logic/rotation_calc.dart';
 import '../../models/entry.dart';
+import '../../models/machine.dart';
 import '../../services/app_services.dart';
 import '../../state/measurement_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../util/format.dart';
+import '../start/machine_sheets.dart';
 import '../widgets/numpad.dart';
 import 'end_sheets.dart';
 import 'rotation_chart.dart';
@@ -134,34 +136,30 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   void _haptic() => HapticFeedback.selectionClick();
 
-  // ---------- 終了 / 台移動フロー ----------
+  String _stamp() => DateTime.now().toIso8601String();
 
-  /// 現セッションを回収額つきで closed にし、サマリーを組み立てる。
-  Future<SessionSummary> _closeCurrent(int recovery) async {
-    final closed = await s.sessionService.close(c.session, recovery: recovery);
-    final stats = await s.sessionService.stats(closed, c.machine);
-    return SessionSummary(session: closed, machine: c.machine, stats: stats);
-  }
+  // ---------- 終了 / 台移動フロー ----------
 
   void _backHome() {
     if (mounted) Navigator.of(context).pop();
   }
 
-  /// 終了 → 回収額入力 → サマリー → ホームへ。
+  /// 終了 → 任意回収額(スキップ可)→ 足跡を自動保存 → ホームへ。
+  /// count 0 件のセッションは endAndLog 側で足跡を残さず破棄される。
   Future<void> _endFlow() async {
     if (_flowBusy || c.isHit) return;
-    final recovery = await showRecoverySheet(context, forMove: false);
-    if (recovery == null || !mounted) return;
+    final result = await showRecoverySheet(context, forMove: false);
+    if (result == null || !mounted) return; // dismiss = 中断
     _flowBusy = true;
-    final summary = await _closeCurrent(recovery);
+    await s.sessionService
+        .endAndLog(c.session, c.machine, recovery: result.recovery);
     _flowBusy = false;
     if (!mounted) return;
-    await showSummarySheet(context, summary);
     _backHome();
   }
 
-  /// 台移動 → 確認 → 回収額 → 機種選択(先頭に同じ機種)→ 新カウンタ → 新セッション。
-  /// 旧セッションの closed と新セッションの start が途切れなく繋がる。
+  /// 台移動 → 確認 → 任意回収額 → 足跡保存 → 機種選択(登録/スロット入力対応)
+  /// → 新カウンタ → 新セッションに差し替え。
   Future<void> _moveFlow() async {
     if (_flowBusy || c.isHit) return;
     final st = c.stats;
@@ -172,29 +170,39 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       totalSpins: st.totalRotations,
     );
     if (go != true || !mounted) return;
-    final recovery = await showRecoverySheet(context, forMove: true);
-    if (recovery == null || !mounted) return;
+    final result = await showRecoverySheet(context, forMove: true);
+    if (result == null || !mounted) return;
 
     _flowBusy = true;
-    final oldSession = c.session;
-    await _closeCurrent(recovery); // 旧セッションを収支に記録
+    final ballPrice = c.session.ballPrice;
+    final addUnit = c.session.addUnit;
+    await s.sessionService
+        .endAndLog(c.session, c.machine, recovery: result.recovery);
 
     final machines = await s.machines.all();
     if (!mounted) {
       _flowBusy = false;
       return;
     }
-    final picked = await showMachinePick(
+    final pick = await showMachinePick(
       context,
       machines: machines,
       sameMachine: c.machine,
-      exchangeRate: oldSession.exchangeRate,
+      ballPrice: ballPrice,
     );
+    if (pick == null || !mounted) {
+      _flowBusy = false;
+      _backHome();
+      return;
+    }
+
+    final picked = await _resolvePickedMachine(pick, ballPrice);
     if (picked == null || !mounted) {
       _flowBusy = false;
       _backHome();
       return;
     }
+
     final counter = await showNewCounterSheet(context, machine: picked);
     if (counter == null || !mounted) {
       _flowBusy = false;
@@ -202,12 +210,11 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       return;
     }
 
-    final store = await s.stores.byId(oldSession.storeId);
     final newSession = await s.sessionService.start(
-      store: store!,
       machine: picked,
+      ballPrice: ballPrice,
       startCounter: counter,
-      addUnit: oldSession.addUnit,
+      addUnit: addUnit,
     );
     final nc = MeasurementController(
       service: s.sessionService,
@@ -225,6 +232,32 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     _lastLen = -1;
     _flowBusy = false;
     WidgetsBinding.instance.addPostFrameCallback((_) => _snapChart());
+  }
+
+  /// 機種選択結果を「開始できる Machine」に解決する。
+  /// 新規登録 or 該当スロット未入力なら、その場で入力を求めて保存する(育つマスタ)。
+  Future<Machine?> _resolvePickedMachine(
+      MachinePick pick, double ballPrice) async {
+    if (pick.register) {
+      final reg = await showRegisterMachine(context, ballPrice: ballPrice);
+      if (reg == null) return null;
+      final base = Machine(name: reg.name, updatedAt: _stamp());
+      return s.machines
+          .insert(applyBorder(base, ballPrice, reg.border, _stamp()));
+    }
+    var picked = pick.machine!;
+    if (picked.borderFor(ballPrice) == null) {
+      final entered = await showBorderPrompt(
+        context,
+        machineName: picked.name,
+        ballPrice: ballPrice,
+        current: null,
+      );
+      if (entered == null) return null;
+      picked = applyBorder(picked, ballPrice, entered, _stamp());
+      await s.machines.update(picked);
+    }
+    return picked;
   }
 
   @override
@@ -353,28 +386,19 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   // ---------- ヘッダー ----------
   Widget _header() {
     final st = c.stats;
-    final rate = c.session.exchangeRate.toStringAsFixed(2);
+    final borderText =
+        st.border > 0 ? st.border.toStringAsFixed(1) : '--';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Text(
-                  c.machine.name,
-                  style: AppTheme.sans(
-                      size: 14,
-                      weight: FontWeight.w500,
-                      letterSpacing: 0.02 * 14),
-                ),
-              ),
-              Text('1/${c.machine.probability}',
-                  style: AppTheme.mono(size: 13, color: AppColors.muted)),
-            ],
+          Text(
+            c.machine.name,
+            style: AppTheme.sans(
+                size: 14, weight: FontWeight.w500, letterSpacing: 0.02 * 14),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
           // 総回転(最後の項目)は持ち玉決定時に短くハイライトする。
@@ -384,8 +408,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
               final p = _totalPulse.isAnimating ? (1 - _totalPulse.value) : 0.0;
               return _statLine(
                 [
-                  ('実質B', st.effectiveBorder.toStringAsFixed(1)),
-                  ('換金', rate),
+                  ('ボーダー', borderText),
                   ('投資', fmtK(st.cashInvest)),
                   ('総回転', '${st.totalRotations}'),
                 ],

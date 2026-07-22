@@ -6,11 +6,9 @@ import 'package:pachi_kaiten/logic/rotation_calc.dart';
 import 'package:pachi_kaiten/logic/session_service.dart';
 import 'package:pachi_kaiten/models/entry.dart';
 import 'package:pachi_kaiten/models/machine.dart';
-import 'package:pachi_kaiten/models/store.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
-import 'package:pachi_kaiten/repositories/machine_repository.dart';
 import 'package:pachi_kaiten/repositories/session_repository.dart';
-import 'package:pachi_kaiten/repositories/store_repository.dart';
+import 'package:pachi_kaiten/repositories/trace_repository.dart';
 import 'package:pachi_kaiten/services/app_services.dart';
 import 'package:pachi_kaiten/state/measurement_controller.dart';
 import 'package:pachi_kaiten/theme/app_theme.dart';
@@ -21,11 +19,10 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'helpers/test_db.dart';
 
 const _machine = Machine(
-  id: 'umi5sp',
+  id: 1,
   name: 'P大海物語5スペシャル',
-  probability: 319.6,
-  border40: 16.5,
-  border357: 18.0,
+  border4: 16.5,
+  border1: 66.0,
 );
 
 void main() {
@@ -40,19 +37,16 @@ void main() {
     db = await openTestDb();
     final sessionRepo = SessionRepository(db);
     entryRepo = EntryRepository(db);
-    final machineRepo = MachineRepository(db);
-    await machineRepo.upsertAll([_machine]);
-    service = SessionService(sessions: sessionRepo, entries: entryRepo);
+    service = SessionService(
+        sessions: sessionRepo, entries: entryRepo, traces: TraceRepository(db));
     services = buildTestServices(db);
   });
 
   tearDown(() async => db.close());
 
   Future<MeasurementController> startController() async {
-    final store = await StoreRepository(db)
-        .insert(const Store(name: 'テスト店', exchangeRate: 3.57, ballPrice: 4.0));
-    final session =
-        await service.start(store: store, machine: _machine, startCounter: 0);
+    final session = await service.start(
+        machine: _machine, ballPrice: 4.0, startCounter: 0);
     final c = MeasurementController(
         service: service, session: session, machine: _machine);
     await c.load();
@@ -220,10 +214,8 @@ void main() {
     });
 
     test('1円貸しは持ち玉単位 1000/2000', () async {
-      final store = await StoreRepository(db).insert(
-          const Store(name: '1パチ', exchangeRate: 3.57, ballPrice: 1.0));
-      final session =
-          await service.start(store: store, machine: _machine, startCounter: 0);
+      final session = await service.start(
+          machine: _machine, ballPrice: 1.0, startCounter: 0);
       final c = MeasurementController(
           service: service, session: session, machine: _machine);
       await c.load();
@@ -309,7 +301,7 @@ void main() {
             mode: EntryMode.cash, investAdded: 1000, createdAt: 't${i + 1}'),
     ];
     final stats =
-        computeStats(entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+        computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
 
     for (final h in <double>[4, 12, 20, 40, 60, 85]) {
       await tester.pumpWidget(MediaQuery(
@@ -351,7 +343,7 @@ void main() {
           mode: EntryMode.ball, createdAt: 't3'),
     ];
     final stats =
-        computeStats(entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+        computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
     expect(stats.rebaseMarkers, [1]);
 
     await tester.pumpWidget(MaterialApp(

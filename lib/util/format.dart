@@ -15,6 +15,13 @@ String fmtYenSigned(num v) {
 /// 符号なし円(カンマ区切り)。例: 12,000円。
 String fmtYen(num v) => '${_grouped.format(v.round())}円';
 
+/// 符号つき数値(単位なし)。例: +2,840 / −1,960。足跡の EV 表示など。
+String fmtSignedNum(num v) {
+  final n = v.round();
+  final sign = n >= 0 ? '+' : _minus;
+  return '$sign${_grouped.format(n.abs())}';
+}
+
 /// 千円単位。例: 12.0k。
 String fmtK(num yen) => '${(yen / 1000).toStringAsFixed(1)}k';
 
@@ -26,6 +33,13 @@ String fmtDiff(double? v) {
   if (v == null) return '';
   final sign = v >= 0 ? '+' : _minus;
   return '$sign${v.abs().toStringAsFixed(1)}';
+}
+
+/// 足跡の短い日付。'2026-07-22' → '7/22'。
+String fmtShortDate(String yyyyMmDd) {
+  final d = DateTime.tryParse(yyyyMmDd);
+  if (d == null) return yyyyMmDd;
+  return '${d.month}/${d.day}';
 }
 
 const _weekdayJp = ['月', '火', '水', '木', '金', '土', '日'];

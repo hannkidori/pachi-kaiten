@@ -1,13 +1,13 @@
 import 'package:sqflite/sqflite.dart';
 
-/// アプリ設定(key-value)。加算単位デフォルト・スリープ防止・機種マスタ版など。
+/// アプリ設定(key-value)。加算単位デフォルト・貸玉・スリープ防止など。
 class SettingsRepository {
   final Database db;
   SettingsRepository(this.db);
 
   static const kAddUnit = 'add_unit_default';
   static const kKeepAwake = 'keep_awake';
-  static const kMachinesVersion = 'machines_version';
+  static const kBallPrice = 'ball_price'; // グローバル貸玉(4.0 / 1.0)
 
   Future<String?> getString(String key) async {
     final rows =
@@ -37,8 +37,12 @@ class SettingsRepository {
   Future<void> setKeepAwake(bool on) =>
       setString(kKeepAwake, on ? '1' : '0');
 
-  Future<String?> machinesVersion() => getString(kMachinesVersion);
+  /// グローバル貸玉単価(4.0 / 1.0)。既定 4.0。
+  Future<double> ballPrice() async {
+    final v = await getString(kBallPrice);
+    return double.tryParse(v ?? '') ?? 4.0;
+  }
 
-  Future<void> setMachinesVersion(String version) =>
-      setString(kMachinesVersion, version);
+  Future<void> setBallPrice(double price) =>
+      setString(kBallPrice, price.toString());
 }

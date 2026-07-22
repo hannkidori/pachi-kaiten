@@ -3,21 +3,18 @@ import 'package:pachi_kaiten/logic/session_service.dart';
 import 'package:pachi_kaiten/models/entry.dart';
 import 'package:pachi_kaiten/models/machine.dart';
 import 'package:pachi_kaiten/models/session.dart';
-import 'package:pachi_kaiten/models/store.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
-import 'package:pachi_kaiten/repositories/machine_repository.dart';
 import 'package:pachi_kaiten/repositories/session_repository.dart';
-import 'package:pachi_kaiten/repositories/store_repository.dart';
+import 'package:pachi_kaiten/repositories/trace_repository.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/test_db.dart';
 
 const _machine = Machine(
-  id: 'umi5sp',
+  id: 1,
   name: 'P大海物語5スペシャル',
-  probability: 319.6,
-  border40: 16.5,
-  border357: 18.0,
+  border4: 16.5,
+  border1: 66.0,
 );
 
 void main() {
@@ -25,8 +22,6 @@ void main() {
   late SessionService service;
   late SessionRepository sessionRepo;
   late EntryRepository entryRepo;
-  late StoreRepository storeRepo;
-  late MachineRepository machineRepo;
 
   // 時刻を固定して created_at / date を決定的にする。
   var t = DateTime(2026, 7, 22, 10, 0, 0);
@@ -36,35 +31,27 @@ void main() {
     db = await openTestDb();
     sessionRepo = SessionRepository(db);
     entryRepo = EntryRepository(db);
-    storeRepo = StoreRepository(db);
-    machineRepo = MachineRepository(db);
     service = SessionService(
       sessions: sessionRepo,
       entries: entryRepo,
+      traces: TraceRepository(db),
       clock: clock,
     );
     t = DateTime(2026, 7, 22, 10, 0, 0);
-    await machineRepo.upsertAll([_machine]);
   });
 
   tearDown(() async => db.close());
 
-  Future<Store> seedStore({double rate = 4.0, double ball = 4.0}) {
-    return storeRepo.insert(
-      Store(name: 'テスト店', exchangeRate: rate, ballPrice: ball),
-    );
-  }
-
   test('start でセッションと start イベントが即時に書かれる', () async {
-    final store = await seedStore();
     final s = await service.start(
-      store: store,
       machine: _machine,
+      ballPrice: 4.0,
       startCounter: 100,
     );
     expect(s.id, isNotNull);
     expect(s.state, SessionState.active);
-    expect(s.exchangeRate, 4.0);
+    expect(s.ballPrice, 4.0);
+    expect(s.machineId, 1);
     expect(s.date, '2026-07-22');
 
     final ev = await entryRepo.bySession(s.id!);
@@ -78,12 +65,7 @@ void main() {
   });
 
   test('決定タップは即時書き込み、cash は投資自動加算', () async {
-    final store = await seedStore();
-    final s = await service.start(
-      store: store,
-      machine: _machine,
-      startCounter: 0,
-    );
+    final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
     await service.recordCount(s, counter: 20, mode: EntryMode.cash);
     await service.recordCount(s, counter: 41, mode: EntryMode.cash);
 
@@ -94,12 +76,7 @@ void main() {
   });
 
   test('大当り→復帰でモードが ball に切り替わり、rebase は回転に数えない', () async {
-    final store = await seedStore();
-    final s = await service.start(
-      store: store,
-      machine: _machine,
-      startCounter: 0,
-    );
+    final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
     await service.recordCount(s, counter: 20, mode: EntryMode.cash);
     await service.recordRebase(s, counter: 500);
 
@@ -114,12 +91,7 @@ void main() {
   });
 
   test('1つ戻すは直前の count のみ削除、start / rebase は戻せない', () async {
-    final store = await seedStore();
-    final s = await service.start(
-      store: store,
-      machine: _machine,
-      startCounter: 0,
-    );
+    final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
     await service.recordCount(s, counter: 20, mode: EntryMode.cash);
 
     expect(await service.undoLastCount(s.id!), isTrue);
@@ -136,13 +108,8 @@ void main() {
     expect(ev.last.type, EntryType.rebase);
   });
 
-  test('close で closed になり回収額が入る', () async {
-    final store = await seedStore();
-    final s = await service.start(
-      store: store,
-      machine: _machine,
-      startCounter: 0,
-    );
+  test('close で closed になり回収額が入る(任意)', () async {
+    final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
     await service.recordCount(s, counter: 20, mode: EntryMode.cash);
     final closed = await service.close(s, recovery: 3000);
 
@@ -156,46 +123,32 @@ void main() {
     expect(reloaded.recovery, 3000);
   });
 
-  test('店舗を後から編集しても過去セッションの換金率は変わらない', () async {
-    var store = await seedStore(rate: 4.0);
-    final s = await service.start(
-      store: store,
-      machine: _machine,
-      startCounter: 0,
-    );
-    // 店舗の換金率を変更
-    await storeRepo.update(store.copyWith(exchangeRate: 3.3));
+  test('close は回収額なし(スキップ)でも closed にできる', () async {
+    final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
+    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+    final closed = await service.close(s);
+    expect(closed.state, SessionState.closed);
+    expect(closed.recovery, isNull);
+  });
 
-    final reloaded = await sessionRepo.byId(s.id!);
-    expect(reloaded!.exchangeRate, 4.0); // コピーされた値のまま
+  test('discard はセッションとイベントを物理削除する', () async {
+    final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
+    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+
+    await service.discard(s.id!);
+    expect(await sessionRepo.byId(s.id!), isNull);
+    expect(await entryRepo.bySession(s.id!), isEmpty);
+    expect(await sessionRepo.active(), isNull);
   });
 
   test('recentMachineIds は最近使った順', () async {
-    final store = await seedStore();
-    await machineRepo.upsertAll([
-      _machine,
-      const Machine(
-        id: 'eva',
-        name: 'エヴァ',
-        probability: 319.7,
-        border40: 16.2,
-      ),
-    ]);
-    await service.start(store: store, machine: _machine, startCounter: 0);
+    const eva = Machine(id: 2, name: 'エヴァ', border4: 16.2);
+    await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
     t = t.add(const Duration(minutes: 10));
-    await service.start(
-      store: store,
-      machine: const Machine(
-        id: 'eva',
-        name: 'エヴァ',
-        probability: 319.7,
-        border40: 16.2,
-      ),
-      startCounter: 0,
-    );
+    await service.start(machine: eva, ballPrice: 4.0, startCounter: 0);
 
     final recent = await sessionRepo.recentMachineIds();
-    expect(recent.first, 'eva'); // 直近が先頭
-    expect(recent.contains('umi5sp'), isTrue);
+    expect(recent.first, 2); // 直近が先頭
+    expect(recent.contains(1), isTrue);
   });
 }

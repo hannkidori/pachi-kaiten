@@ -1,14 +1,12 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:pachi_kaiten/db/database.dart';
 import 'package:pachi_kaiten/logic/backup_service.dart';
-import 'package:pachi_kaiten/logic/history_service.dart';
-import 'package:pachi_kaiten/logic/machine_sync.dart';
 import 'package:pachi_kaiten/logic/session_service.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
 import 'package:pachi_kaiten/repositories/session_repository.dart';
 import 'package:pachi_kaiten/repositories/settings_repository.dart';
-import 'package:pachi_kaiten/repositories/store_repository.dart';
+import 'package:pachi_kaiten/repositories/trace_repository.dart';
 import 'package:pachi_kaiten/services/app_services.dart';
 
 /// テスト用の DB から AppServices を組み立てる。
@@ -16,17 +14,16 @@ AppServices buildTestServices(Database db) {
   final machines = MachineRepository(db);
   final sessions = SessionRepository(db);
   final entries = EntryRepository(db);
+  final traces = TraceRepository(db);
   final settings = SettingsRepository(db);
   return AppServices(
-    stores: StoreRepository(db),
     machines: machines,
     sessions: sessions,
     entries: entries,
+    traces: traces,
     settings: settings,
-    sessionService: SessionService(sessions: sessions, entries: entries),
-    history:
-        HistoryService(sessions: sessions, entries: entries, machines: machines),
-    machineSync: MachineSync(machines, settings: settings),
+    sessionService: SessionService(
+        sessions: sessions, entries: entries, traces: traces),
     backup: BackupService(db),
   );
 }

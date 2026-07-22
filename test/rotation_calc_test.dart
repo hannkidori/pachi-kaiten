@@ -23,18 +23,6 @@ Entry _e(
 }
 
 void main() {
-  group('effectiveBorder', () {
-    test('4円貸しはカタログ値そのまま', () {
-      expect(effectiveBorder(16.5, 4.0), 16.5);
-    });
-    test('1円貸しは4倍', () {
-      expect(effectiveBorder(16.5, 1.0), closeTo(66.0, 1e-9));
-    });
-    test('ball_price 0 はフォールバックでカタログ値', () {
-      expect(effectiveBorder(16.5, 0), 16.5);
-    });
-  });
-
   group('computeStats — 現金のみ', () {
     test('R と borderDiff と EV', () {
       final entries = [
@@ -42,8 +30,7 @@ void main() {
         _e(EntryType.count, 120, mode: EntryMode.cash, invest: 1000, seq: 1),
         _e(EntryType.count, 141, mode: EntryMode.cash, invest: 1000, seq: 2),
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
 
       expect(s.totalRotations, 41);
       expect(s.cashRotations, 41);
@@ -51,7 +38,7 @@ void main() {
       expect(s.measuredRotations, 41);
       expect(s.measuredInvest, 2000);
       expect(s.rotationRate, closeTo(20.5, 1e-9));
-      expect(s.effectiveBorder, 16.5);
+      expect(s.border, 16.5);
       expect(s.borderDiff, closeTo(4.0, 1e-9));
       expect(s.expectedValue, closeTo(484.848484, 1e-4));
       expect(s.bonusCount, 0);
@@ -60,9 +47,7 @@ void main() {
 
     test('未計測(投資0)は R / borderDiff / EV が null', () {
       final s = computeStats(
-          entries: [_e(EntryType.start, 100)],
-          catalogBorder: 16.5,
-          ballPrice: 4.0);
+          entries: [_e(EntryType.start, 100)], border: 16.5, ballPrice: 4.0);
       expect(s.rotationRate, isNull);
       expect(s.borderDiff, isNull);
       expect(s.expectedValue, isNull);
@@ -75,8 +60,7 @@ void main() {
         _e(EntryType.count, 10, mode: EntryMode.cash, invest: 500, seq: 1),
         _e(EntryType.count, 21, mode: EntryMode.cash, invest: 500, seq: 2),
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
       expect(s.cashInvest, 1000);
       expect(s.rotationRate, closeTo(21.0, 1e-9));
     });
@@ -91,8 +75,7 @@ void main() {
         _e(EntryType.rebase, 500, mode: EntryMode.ball, seq: 2),
         _e(EntryType.count, 530, mode: EntryMode.ball, balls: 250, seq: 3),
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
 
       expect(s.totalRotations, 50);
       expect(s.cashRotations, 20);
@@ -119,8 +102,7 @@ void main() {
         // 復帰直後の最初の入力(持ち玉)。250玉で17回転。
         _e(EntryType.count, 417, mode: EntryMode.ball, balls: 250, seq: 3),
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
       // 持ち玉の17回転が R に含まれる。
       expect(s.measuredRotations, 18 + 17);
       expect(s.measuredInvest, 1000 + 1000);
@@ -134,8 +116,7 @@ void main() {
         _e(EntryType.rebase, 500, mode: EntryMode.ball, seq: 2),
         _e(EntryType.count, 530, mode: EntryMode.ball, seq: 3), // balls=0
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
       expect(s.totalRotations, 50); // 表示上の総回転には入る
       expect(s.measuredRotations, 20); // 計測は現金のみ
       expect(s.measuredInvest, 1000);
@@ -143,16 +124,16 @@ void main() {
       expect(s.segments[1].measured, isFalse);
     });
 
-    test('1円パチンコ: 1000玉=1000円相当。ボーダー4倍で評価', () {
+    test('1円パチンコ: 1000玉=1000円相当。ボーダーは入力値そのまま(自動換算なし)', () {
+      // 1円のボーダーは 4円の単純4倍にならないため、ユーザーが 1円用の値を入れる。
       final entries = [
         _e(EntryType.start, 0, seq: 0),
         _e(EntryType.count, 60, mode: EntryMode.cash, invest: 1000, seq: 1),
         _e(EntryType.rebase, 300, mode: EntryMode.ball, seq: 2),
         _e(EntryType.count, 340, mode: EntryMode.ball, balls: 1000, seq: 3),
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 1.0);
-      expect(s.effectiveBorder, closeTo(66.0, 1e-9));
+      final s = computeStats(entries: entries, border: 66.0, ballPrice: 1.0);
+      expect(s.border, 66.0); // 補正せずそのまま
       // 計測: 100回転 / (2000円/1000) = 50
       expect(s.measuredRotations, 100);
       expect(s.measuredInvest, 2000); // 1000円 + 1000玉×1円
@@ -168,8 +149,7 @@ void main() {
         _e(EntryType.count, 120, mode: EntryMode.cash, invest: 1000, seq: 1),
         _e(EntryType.rebase, 500, mode: EntryMode.ball, seq: 2), // 起点付替のみ
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
       expect(s.totalRotations, 20);
       expect(s.measuredRotations, 20);
       expect(s.bonusCount, 1);
@@ -185,8 +165,7 @@ void main() {
         _e(EntryType.count, 552, mode: EntryMode.cash, invest: 1000, seq: 5),
         _e(EntryType.rebase, 800, mode: EntryMode.ball, seq: 6), // 計測4本後
       ];
-      final s = computeStats(
-          entries: entries, catalogBorder: 16.5, ballPrice: 4.0);
+      final s = computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
       expect(s.bonusCount, 2);
       expect(s.rebaseMarkers, [2, 4]);
     });

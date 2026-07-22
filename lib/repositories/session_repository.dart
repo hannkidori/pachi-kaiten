@@ -2,8 +2,8 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/session.dart';
 
-/// セッションの永続化。開始・終了(回収額確定)・復帰カード用のアクティブ取得・
-/// 履歴(月別/日別)取得を担う。
+/// セッションの永続化。開始・終了(回収額確定)・復帰カード用のアクティブ取得を担う。
+/// 履歴は足跡ログ(traces)側に集約したため、集計系クエリはここには持たない。
 class SessionRepository {
   final Database db;
   SessionRepository(this.db);
@@ -39,54 +39,14 @@ class SessionRepository {
     return Session.fromMap(rows.first);
   }
 
-  /// 終了済みセッションを開始日の新しい順に。
-  Future<List<Session>> allClosed() async {
-    final rows = await db.query(
-      'sessions',
-      where: "state = 'closed'",
-      orderBy: 'date DESC, started_at DESC',
-    );
-    return rows.map(Session.fromMap).toList();
-  }
-
-  /// 指定月(YYYY-MM)の終了済みセッション。
-  Future<List<Session>> closedByMonth(String yyyyMm) async {
-    final rows = await db.query(
-      'sessions',
-      where: "state = 'closed' AND date LIKE ?",
-      whereArgs: ['$yyyyMm-%'],
-      orderBy: 'date DESC, started_at DESC',
-    );
-    return rows.map(Session.fromMap).toList();
-  }
-
-  /// 記録のある月(YYYY-MM)を新しい順に。履歴の月チップ用。
-  Future<List<String>> months() async {
-    final rows = await db.rawQuery(
-      "SELECT DISTINCT substr(date, 1, 7) AS ym FROM sessions "
-      "WHERE state = 'closed' ORDER BY ym DESC",
-    );
-    return rows.map((r) => r['ym'] as String).toList();
-  }
-
-  /// 直近セッションの店舗 id(スタート画面の「前回値」デフォルト用)。無ければ null。
-  Future<int?> recentStoreId() async {
-    final rows = await db.query('sessions',
-        columns: ['store_id'],
-        orderBy: 'started_at DESC, id DESC',
-        limit: 1);
-    if (rows.isEmpty) return null;
-    return (rows.first['store_id'] as num).toInt();
-  }
-
   /// 最近使った機種 id を新しい順に(重複除去)。機種検索の先頭表示用。
-  Future<List<String>> recentMachineIds({int limit = 8}) async {
+  Future<List<int>> recentMachineIds({int limit = 8}) async {
     final rows = await db.rawQuery(
       'SELECT machine_id, MAX(started_at) AS last FROM sessions '
       'GROUP BY machine_id ORDER BY last DESC LIMIT ?',
       [limit],
     );
-    return rows.map((r) => r['machine_id'] as String).toList();
+    return rows.map((r) => (r['machine_id'] as num).toInt()).toList();
   }
 
   Future<void> delete(int id) async {

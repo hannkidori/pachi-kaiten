@@ -3,27 +3,24 @@ enum SessionState { active, closed }
 
 /// セッション(= 1 台の計測単位)。
 ///
-/// [exchangeRate] / [ballPrice] は開始時点の店舗値をコピーして固定する
-/// (後から店舗を編集しても過去のセッションは変わらない)。
+/// [ballPrice] は開始時点のグローバル貸玉設定(4.0 / 1.0)をコピーして固定する
+/// (後から設定を変えても過去のセッションは変わらない)。ボーダーは機種側の
+/// スロットを参照するため、セッションには持たない。
 class Session {
   final int? id;
   final String date; // YYYY-MM-DD(開始日)
-  final int storeId;
-  final String machineId;
-  final double exchangeRate;
+  final int machineId;
   final double ballPrice;
   final int addUnit; // 決定 1 回の投資加算額(1000 / 500)
   final SessionState state;
-  final int? recovery; // 回収額(円)。closed 時に必須
+  final int? recovery; // 回収額(円)。任意(スキップ可)
   final String startedAt;
   final String? closedAt;
 
   const Session({
     this.id,
     required this.date,
-    required this.storeId,
     required this.machineId,
-    required this.exchangeRate,
     required this.ballPrice,
     this.addUnit = 1000,
     this.state = SessionState.active,
@@ -37,9 +34,7 @@ class Session {
   Session copyWith({
     int? id,
     String? date,
-    int? storeId,
-    String? machineId,
-    double? exchangeRate,
+    int? machineId,
     double? ballPrice,
     int? addUnit,
     SessionState? state,
@@ -50,9 +45,7 @@ class Session {
     return Session(
       id: id ?? this.id,
       date: date ?? this.date,
-      storeId: storeId ?? this.storeId,
       machineId: machineId ?? this.machineId,
-      exchangeRate: exchangeRate ?? this.exchangeRate,
       ballPrice: ballPrice ?? this.ballPrice,
       addUnit: addUnit ?? this.addUnit,
       state: state ?? this.state,
@@ -66,9 +59,7 @@ class Session {
     return {
       'id': id,
       'date': date,
-      'store_id': storeId,
       'machine_id': machineId,
-      'exchange_rate': exchangeRate,
       'ball_price': ballPrice,
       'add_unit': addUnit,
       'state': state.name,
@@ -82,9 +73,7 @@ class Session {
     return Session(
       id: map['id'] as int?,
       date: map['date'] as String,
-      storeId: (map['store_id'] as num).toInt(),
-      machineId: map['machine_id'] as String,
-      exchangeRate: (map['exchange_rate'] as num).toDouble(),
+      machineId: (map['machine_id'] as num).toInt(),
       ballPrice: (map['ball_price'] as num).toDouble(),
       addUnit: (map['add_unit'] as num).toInt(),
       state: (map['state'] as String) == 'closed'

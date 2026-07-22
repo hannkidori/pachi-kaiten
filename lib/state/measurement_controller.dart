@@ -104,7 +104,7 @@ class MeasurementController extends ChangeNotifier {
 
   RotationStats get stats => computeStats(
         entries: _entries,
-        catalogBorder: machine.borderForRate(session.exchangeRate),
+        border: machine.borderFor(session.ballPrice) ?? 0,
         ballPrice: session.ballPrice,
       );
 

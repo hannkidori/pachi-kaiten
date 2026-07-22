@@ -2,7 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/machine.dart';
 
-/// 機種マスタ。JSON 同期は UPSERT、UI からはインクリメンタル検索で引く。
+/// 機種マスタ(ユーザー登録型)の CRUD。UI からはインクリメンタル検索で引く。
 class MachineRepository {
   final Database db;
   MachineRepository(this.db);
@@ -12,7 +12,7 @@ class MachineRepository {
     return rows.map(Machine.fromMap).toList();
   }
 
-  Future<Machine?> byId(String id) async {
+  Future<Machine?> byId(int id) async {
     final rows = await db.query('machines', where: 'id = ?', whereArgs: [id]);
     if (rows.isEmpty) return null;
     return Machine.fromMap(rows.first);
@@ -31,28 +31,20 @@ class MachineRepository {
     return rows.map(Machine.fromMap).toList();
   }
 
-  /// machines.json 由来のリストを UPSERT する(既存 id は上書き)。
-  Future<void> upsertAll(List<Machine> machines) async {
-    final batch = db.batch();
-    for (final m in machines) {
-      batch.insert('machines', m.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    await batch.commit(noResult: true);
+  /// 新規登録して採番された id つきの [Machine] を返す。
+  Future<Machine> insert(Machine machine) async {
+    final id = await db.insert('machines', machine.toMap()..remove('id'));
+    return machine.copyWith(id: id);
   }
 
-  /// マスタを丸ごと [machines] に置き換える(全削除→挿入。トランザクション)。
-  /// 同梱アセット更新時のミラー用。旧マスタの取りこぼしを残さない。
-  Future<void> replaceAll(List<Machine> machines) async {
-    await db.transaction((txn) async {
-      await txn.delete('machines');
-      final batch = txn.batch();
-      for (final m in machines) {
-        batch.insert('machines', m.toMap(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
-      }
-      await batch.commit(noResult: true);
-    });
+  Future<void> update(Machine machine) async {
+    assert(machine.id != null, 'update には id が必要');
+    await db.update('machines', machine.toMap(),
+        where: 'id = ?', whereArgs: [machine.id]);
+  }
+
+  Future<void> delete(int id) async {
+    await db.delete('machines', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> count() async {
