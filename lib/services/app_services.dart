@@ -39,7 +39,8 @@ class AppServices {
     final machines = MachineRepository(db);
     final settings = SettingsRepository(db);
     final machineSync = MachineSync(machines, settings: settings);
-    await machineSync.seedIfEmpty();
+    // 空ならシード、同梱版が新しければ機種シートを同期(ミラー)。
+    await machineSync.seedFromAsset();
     final sessions = SessionRepository(db);
     final entries = EntryRepository(db);
     return AppServices(

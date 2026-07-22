@@ -68,13 +68,35 @@ class MachineSync {
     return (version: version, machines: machines);
   }
 
-  /// マスタが空なら(初回起動)アセットからシードし、version を記録する。
-  Future<void> seedIfEmpty() async {
-    if (await repo.count() > 0) return;
+  /// 同梱アセット(assets/machines.json)を機種マスタへ反映する。
+  ///
+  /// - マスタが空(初回起動)→ シードする。
+  /// - アセットの version が保存済み version より新しい(アプリ更新で新しい機種
+  ///   シートを同梱した)→ マスタを丸ごとアセットに置き換える(ミラー)。
+  /// - それ以外(同じ/古い)→ 何もしない。
+  ///
+  /// これにより、既にシード済みのインストールでもアプリ更新時に機種シートが同期される。
+  Future<SyncOutcome> seedFromAsset() async {
     final jsonStr = await rootBundle.loadString(_assetPath);
+    return applyAsset(jsonStr);
+  }
+
+  /// [seedFromAsset] のコア(テスト用に JSON 文字列を直接受ける)。
+  Future<SyncOutcome> applyAsset(String jsonStr) async {
     final parsed = parse(jsonStr);
-    await repo.upsertAll(parsed.machines);
+    if (await repo.count() == 0) {
+      await repo.upsertAll(parsed.machines);
+      await settings?.setMachinesVersion(parsed.version);
+      return SyncOutcome.applied;
+    }
+    final local = await settings?.machinesVersion();
+    if (local != null && parsed.version.compareTo(local) <= 0) {
+      return SyncOutcome.upToDate;
+    }
+    // 新しい同梱版 → 丸ごと置き換え(旧マスタの取りこぼしを残さない)。
+    await repo.replaceAll(parsed.machines);
     await settings?.setMachinesVersion(parsed.version);
+    return SyncOutcome.applied;
   }
 
   /// リモート(GitHub raw など)から取得して差分適用する。

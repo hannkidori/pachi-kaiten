@@ -56,6 +56,41 @@ void main() {
       expect(await settings.machinesVersion(), '2026-07-23');
     });
 
+    group('applyAsset(同梱アセット同期)', () {
+      test('空なら丸ごとシードする', () async {
+        final db2 = await openTestDb();
+        final repo2 = MachineRepository(db2);
+        final set2 = SettingsRepository(db2);
+        final sync2 = MachineSync(repo2, settings: set2);
+        final res = await sync2.applyAsset(
+            machinesJson('2026-08-01', [mj('a', 'A'), mj('b', 'B')]));
+        expect(res, SyncOutcome.applied);
+        expect(await repo2.count(), 2);
+        expect(await set2.machinesVersion(), '2026-08-01');
+        await db2.close();
+      });
+
+      test('同梱版が新しいと機種シートを丸ごと置き換える(旧マスタは残らない)', () async {
+        // setUp で umi(旧・海物語) + version 2026-07-22。
+        final res = await sync.applyAsset(
+            machinesJson('2026-07-23', [mj('eva', 'エヴァ'), mj('hokuto', '北斗')]));
+        expect(res, SyncOutcome.applied);
+        // 旧 umi は消え、新しい2機種だけになる(ミラー)。
+        expect(await machineRepo.byId('umi'), isNull);
+        expect(await machineRepo.count(), 2);
+        expect(await machineRepo.byId('eva'), isNotNull);
+        expect(await settings.machinesVersion(), '2026-07-23');
+      });
+
+      test('同梱版が同じ/古いなら何もしない', () async {
+        final res = await sync.applyAsset(
+            machinesJson('2026-07-22', [mj('eva', 'エヴァ')]));
+        expect(res, SyncOutcome.upToDate);
+        expect((await machineRepo.byId('umi'))!.name, '旧・海物語'); // 不変
+        expect(await machineRepo.byId('eva'), isNull);
+      });
+    });
+
     test('同じ version は UPSERT しない', () async {
       final res = await sync.syncFromRemote('u',
           fetch: fixed(machinesJson('2026-07-22', [mj('umi', '別名')])));

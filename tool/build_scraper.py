@@ -29,6 +29,7 @@ import argparse
 import datetime as _dt
 import hashlib
 import json
+import os
 import re
 import sys
 import time
@@ -48,11 +49,18 @@ except ImportError:  # parse だけなら requests は不要にしたいが、�
 TOOL_DIR = Path(__file__).resolve().parent
 CACHE_DIR = TOOL_DIR / "cache"
 SOURCES_FILE = TOOL_DIR / "sources.txt"
-OUTPUT_FILE = TOOL_DIR.parent / "assets" / "machines.json"
+# 配信元(data/)を主とし、バンドル版(assets/)へも同じ内容を書き出す。
+OUTPUT_FILE = TOOL_DIR.parent / "data" / "machines.json"
+ASSET_FILE = TOOL_DIR.parent / "assets" / "machines.json"
 
-# 正直な User-Agent。CONTACT は自分の連絡先に置き換える。
-CONTACT = "your-email@example.com"  # ← 連絡先を入れる
+# 正直な User-Agent。連絡先は環境変数 SCRAPER_CONTACT で渡す(リポジトリに
+# メールアドレスをコミットしないため、既定はプレースホルダ)。
+CONTACT = os.environ.get("SCRAPER_CONTACT", "your-email@example.com")
 USER_AGENT = f"pachi-kaiten-scraper/1.0 (personal machine-data collector; +{CONTACT})"
+
+# 取得元(パチセブン)。個別機種は /machines/{数値ID}。
+BASE = "https://pachiseven.jp"
+DETAIL_RE = re.compile(r"/machines/(\d+)")
 
 # リクエスト間の待機。相手サーバーへの配慮として最低 2.0 秒を強制する。
 REQUEST_DELAY_SEC = 2.5
@@ -88,28 +96,56 @@ def read_sources() -> list[str]:
     return urls
 
 
-def cmd_fetch(_args: argparse.Namespace) -> None:
+def cmd_fetch(args: argparse.Namespace) -> None:
     if requests is None:
         sys.exit("requests が必要です: pip install -r tool/requirements.txt")
-    urls = read_sources()
+    list_urls = read_sources()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     session = requests.Session()
     session.headers.update({"User-Agent": USER_AGENT})
     delay = max(REQUEST_DELAY_SEC, _MIN_DELAY_SEC)
 
-    print(f"[fetch] {len(urls)} ページを直列取得(間隔 {delay}s, UA={USER_AGENT})")
-    for i, url in enumerate(urls, 1):
-        dest = CACHE_DIR / _slug(url)
-        print(f"  ({i}/{len(urls)}) {url}")
+    def get(url: str):
+        resp = session.get(url, timeout=25)
+        resp.raise_for_status()
+        return resp.text
+
+    # 1) 一覧ページから個別機種 ID を収集(直列 + sleep)。
+    print(f"[fetch] 一覧 {len(list_urls)} ページから機種IDを収集"
+          f"(間隔 {delay}s, UA={USER_AGENT})")
+    ids: list[str] = []
+    for i, url in enumerate(list_urls, 1):
+        print(f"  list ({i}/{len(list_urls)}) {url}")
         try:
-            resp = session.get(url, timeout=20)
-            resp.raise_for_status()
-            dest.write_text(resp.text, encoding="utf-8")
-            print(f"      -> {dest.name} ({len(resp.text)} bytes)")
+            html = get(url)
+            found = DETAIL_RE.findall(html)
+            for mid in found:
+                if mid not in ids:
+                    ids.append(mid)
+            print(f"      -> {len(set(found))} 機種リンク(累計 {len(ids)})")
+        except Exception as e:
+            print(f"      !! 取得失敗: {e}")
+        if i < len(list_urls):
+            time.sleep(delay)
+
+    if args.limit:
+        ids = ids[: args.limit]
+    print(f"[fetch] 個別機種 {len(ids)} ページを取得(既取得はスキップ)")
+
+    # 2) 各個別ページを取得(machine_{id}.html)。
+    to_fetch = [m for m in ids if not (CACHE_DIR / f"machine_{m}.html").exists()]
+    print(f"       新規取得 {len(to_fetch)} / スキップ {len(ids) - len(to_fetch)}")
+    for j, mid in enumerate(to_fetch, 1):
+        url = f"{BASE}/machines/{mid}"
+        dest = CACHE_DIR / f"machine_{mid}.html"
+        print(f"  ({j}/{len(to_fetch)}) {url}")
+        try:
+            html = get(url)
+            dest.write_text(html, encoding="utf-8")
+            print(f"      -> {dest.name} ({len(html)} bytes)")
         except Exception as e:  # 1 ページ失敗しても全体は続行
             print(f"      !! 取得失敗: {e}")
-        # 並列にせず、必ず待つ(最後の 1 件の後は待たない)。
-        if i < len(urls):
+        if j < len(to_fetch):
             time.sleep(delay)
     print("[fetch] 完了。次に `parse` を実行してください。")
 
@@ -125,68 +161,117 @@ def _num(text: str | None) -> float | None:
     return float(m.group(1)) if m else None
 
 
-def parse_page(html: str) -> list[dict[str, Any]]:
-    """1 ページ分の HTML から機種 dict のリストを抽出する。
+def parse_page(html: str, machine_id: str | None = None) -> list[dict[str, Any]]:
+    """パチセブンの個別機種ページ(/machines/{id})1 件から機種 dict を抽出する。
 
     ==== サイト構造依存(サイト変更時はここだけ直す)====
-    実際の配信元(パチセブン等)の DOM 構造に合わせてセレクタを調整する。
-    下記はテンプレート。data-* 属性を持つ想定のダミー実装なので、対象サイトの
-    実際のマークアップに合わせて書き換えること。
+    - 機種名: <meta property="og:title"> から接尾辞(パチンコ/ボーダー/スペック等)以降を除去。
+    - 大当り確率: 「大当り確率」ラベルを含む行の "約1/319.7" から数値。
+    - 換金率別ボーダー: ヘッダに「4円交換 / 3.57円交換 / 3.3円交換 / 3.0円交換」を持つ表
+      (遊技時間別)の先頭データ行(4h 相当)の値。
+    - type: 大当り確率から簡易分類(甘 <100 / ライト <180 / ミドル 以上)。
     """
     if BeautifulSoup is None:
         sys.exit("beautifulsoup4 が必要です: pip install -r tool/requirements.txt")
     soup = BeautifulSoup(html, "html.parser")
-    machines: list[dict[str, Any]] = []
 
-    # --- 調整ポイント(例) ---
-    # 各機種カードが <div class="machine" data-id="umi5sp"> ... の想定。
-    for card in soup.select(".machine"):
-        mid = card.get("data-id") or card.get("id")
-        name = _text(card.select_one(".machine-name"))
-        prob = _num(_text(card.select_one(".machine-prob")))
-        mtype = _text(card.select_one(".machine-type"))
+    # 機種名
+    og = soup.find("meta", property="og:title")
+    title = og.get("content", "") if og else ""
+    name = re.split(
+        r"\s+(パチンコ|パチスロ|スロット|ボーダー|新台|スペック|信頼度|甘デジ)",
+        title,
+    )[0].strip()
 
-        borders: dict[str, float] = {}
-        for key in RATE_KEYS:
-            # 例: <span class="border" data-rate="4.0">16.5</span>
-            el = card.select_one(f'.border[data-rate="{key}"]')
-            val = _num(_text(el))
-            if val is not None:
-                borders[key] = val
+    # 大当り確率(構造差に強い多段フォールバック)
+    prob: float | None = None
+    prob_re = re.compile(r"1\s*/\s*(\d{2,4}(?:\.\d)?)")
+    # (1) スペック表: 「大当り確率」ラベルセル → 隣のセルの 1/xxx
+    for cell in soup.find_all(["td", "th"]):
+        if cell.get_text(strip=True) in ("大当り確率", "大当たり確率"):
+            sib = cell.find_next_sibling(["td", "th"])
+            m = prob_re.search(sib.get_text(" ", strip=True)) if sib else None
+            if m:
+                prob = float(m.group(1))
+                break
+    # (2) 「通常時 1/xxx」(多モード機の基準確率)
+    if prob is None:
+        m = re.search(r"通常時\s*" + prob_re.pattern, soup.get_text())
+        if m:
+            prob = float(m.group(1))
+    # (3) 「大当り確率」を含む行(tr)全体から
+    if prob is None:
+        for el in soup.find_all(string=re.compile(r"大当[りた]*り?確率")):
+            tr = el.find_parent("tr")
+            if tr:
+                m = prob_re.search(tr.get_text(" ", strip=True))
+                if m:
+                    prob = float(m.group(1))
+                    break
 
-        machines.append(
-            {
-                "id": mid,
-                "name": name,
-                "probability": prob,
-                "borders": borders,
-                "type": mtype,
-            }
-        )
-    return machines
+    # 換金率別ボーダー
+    borders: dict[str, float] = {}
+    for t in soup.find_all("table"):
+        head = t.find("tr")
+        if not head:
+            continue
+        htxt = head.get_text()
+        if "交換" not in htxt or "4円" not in htxt:
+            continue
+        cols = [c.get_text(" ", strip=True) for c in head.find_all(["th", "td"])]
+        idx: dict[str, int] = {}
+        for i, c in enumerate(cols):
+            if re.search(r"4円", c):
+                idx["4.0"] = i
+            elif "3.57" in c:
+                idx["3.57"] = i
+            elif "3.3" in c or "3.30" in c:
+                idx["3.3"] = i
+            elif "3.0" in c or "3.03" in c:
+                idx["3.03"] = i
+        if not idx:
+            continue
+        for tr in t.find_all("tr")[1:]:
+            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+            if cells and re.match(r"\d+h", cells[0]):
+                for k, i in idx.items():
+                    if i < len(cells):
+                        m = re.search(r"([12]\d\.\d)", cells[i])
+                        if m:
+                            borders[k] = float(m.group(1))
+                break
+        if borders:
+            break
 
+    mtype: str | None = None
+    if prob is not None:
+        mtype = "甘" if prob < 100 else ("ライト" if prob < 180 else "ミドル")
 
-def _text(el: Any) -> str | None:
-    if el is None:
-        return None
-    t = el.get_text(strip=True)
-    return t or None
+    return [
+        {
+            "id": machine_id,
+            "name": name or None,
+            "probability": prob,
+            "borders": borders,
+            "type": mtype,
+        }
+    ]
 
 
 def parse_all_cache() -> list[dict[str, Any]]:
     if not CACHE_DIR.exists():
         sys.exit(f"[parse] キャッシュがありません({CACHE_DIR})。先に `fetch` を実行。")
-    files = sorted(CACHE_DIR.glob("*.html"))
+    files = sorted(CACHE_DIR.glob("machine_*.html"))
     if not files:
-        sys.exit(f"[parse] {CACHE_DIR} に *.html がありません。先に `fetch` を実行。")
+        sys.exit(f"[parse] {CACHE_DIR} に machine_*.html がありません。先に `fetch` を実行。")
 
     by_id: dict[str, dict[str, Any]] = {}
     for f in files:
+        mid = f.stem.replace("machine_", "")  # パチセブンの数値ID
         html = f.read_text(encoding="utf-8")
-        for m in parse_page(html):
-            mid = m.get("id")
-            if mid:
-                by_id[mid] = m  # 後勝ちでマージ(重複ページ対策)
+        for m in parse_page(html, machine_id=mid):
+            if m.get("id"):
+                by_id[m["id"]] = m
     return normalize(list(by_id.values()))
 
 
@@ -290,21 +375,48 @@ def print_diff(old: dict, new: list) -> tuple[list[str], list[str], list[str]]:
 # 書き込み
 # ---------------------------------------------------------------------------
 def build_document(machines: list[dict[str, Any]]) -> dict[str, Any]:
-    version = _dt.date.today().isoformat()
+    # 生成日時(秒精度)。同日に作り直しても version が必ず新しくなるので、
+    # アプリ側の同梱アセット同期(version 比較)が確実に発火する。
+    version = _dt.datetime.now().isoformat(timespec="seconds")
     return {"version": version, "machines": machines}
 
 
 def write_output(doc: dict[str, Any]) -> None:
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_FILE.write_text(
-        json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    payload = json.dumps(doc, ensure_ascii=False, indent=2) + "\n"
+    for path in (OUTPUT_FILE, ASSET_FILE):  # data/ と assets/ を同期
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(payload, encoding="utf-8")
+        print(f"[write] {path} を更新(version={doc['version']}, "
+              f"{len(doc['machines'])} 件)")
+
+
+def _has_border(m: dict[str, Any]) -> bool:
+    return isinstance((m.get("borders") or {}).get("4.0"), (int, float))
+
+
+def _is_complete(m: dict[str, Any]) -> bool:
+    return (
+        bool(m.get("name"))
+        and isinstance(m.get("probability"), (int, float))
+        and _has_border(m)
     )
-    print(f"[write] {OUTPUT_FILE} を更新(version={doc['version']}, "
-          f"{len(doc['machines'])} 件)")
 
 
 def cmd_parse(args: argparse.Namespace) -> None:
-    machines = parse_all_cache()
+    parsed = parse_all_cache()
+
+    # 不完全な機種は「エラー」ではなく除外する(パース失敗との区別: 全滅なら
+    # この後の 0 件検証で気づける)。理由を分類してログする。
+    machines = [m for m in parsed if _is_complete(m)]
+    no_border = [m for m in parsed if not _has_border(m)]
+    no_prob = [m for m in parsed
+               if _has_border(m) and not isinstance(m.get("probability"), (int, float))]
+    if no_border:
+        print(f"[skip] ボーダー未掲載(未リリース等)を {len(no_border)} 件除外")
+    if no_prob:
+        names = [m.get("name") or m.get("id") for m in no_prob]
+        print(f"[skip] 確率取得不可(特殊確率/一種二種混合など)を {len(no_prob)} 件除外: "
+              f"{names[:6]}{' …' if len(names) > 6 else ''}")
 
     # 出力前検証(1 件でも欠落があれば出力しない)。
     errors = validate(machines)
@@ -352,7 +464,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="machines.json ビルダー(開発者用)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("fetch", help="sources.txt の URL を直列取得しキャッシュ")
+    p_fetch = sub.add_parser(
+        "fetch", help="一覧(sources.txt)→個別機種ページを直列取得しキャッシュ")
+    p_fetch.add_argument("--limit", type=int, default=0,
+                         help="取得する機種数の上限(0=無制限)")
 
     p_parse = sub.add_parser("parse", help="キャッシュ → machines.json")
     p_parse.add_argument("--yes", action="store_true", help="書き込み確認をスキップ")

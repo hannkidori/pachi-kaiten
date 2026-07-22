@@ -41,6 +41,20 @@ class MachineRepository {
     await batch.commit(noResult: true);
   }
 
+  /// マスタを丸ごと [machines] に置き換える(全削除→挿入。トランザクション)。
+  /// 同梱アセット更新時のミラー用。旧マスタの取りこぼしを残さない。
+  Future<void> replaceAll(List<Machine> machines) async {
+    await db.transaction((txn) async {
+      await txn.delete('machines');
+      final batch = txn.batch();
+      for (final m in machines) {
+        batch.insert('machines', m.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
   Future<int> count() async {
     final rows = await db.rawQuery('SELECT COUNT(*) AS c FROM machines');
     return (rows.first['c'] as num).toInt();
