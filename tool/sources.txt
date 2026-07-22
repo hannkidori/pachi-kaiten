@@ -1,0 +1,7 @@
+# machines.json の取得元 URL(1 行に 1 つ)。# 始まりはコメント。
+# 機種一覧ページや各機種の詳細ページを列挙する。
+# 配信元(パチセブン等)の URL が確定したらここに記載する。
+#
+# 例:
+# https://example.com/pachinko/list?page=1
+# https://example.com/pachinko/list?page=2

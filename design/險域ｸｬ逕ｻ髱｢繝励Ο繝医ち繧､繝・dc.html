@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&amp;family=IBM+Plex+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#101214;font-family:'IBM Plex Sans JP',system-ui,sans-serif}
+a{color:#6BCBDD}a:hover{color:#A8E0EC}
+div::-webkit-scrollbar{display:none}
+@keyframes omBlink{50%{opacity:0}}
+@keyframes omShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes omUp{from{transform:translateY(26px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</helmet>
+<div style="display:flex;gap:48px;justify-content:center;align-items:flex-start;padding:32px">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;color:#7E8A96;font-family:'IBM Plex Mono',monospace">計測画面</div>
+<div data-screen-label="計測画面 プロトタイプ" style="width:390px;height:844px;background:#0A0C0E;color:#E7ECEF;display:flex;flex-direction:column;overflow:hidden;position:relative;user-select:none;border-radius:14px;border:1px solid rgba(255,255,255,0.08)">
+  <sc-if value="{{ isHit }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(227,177,104,0.13);border-bottom:1px solid rgba(227,177,104,0.45);padding:9px 20px">
+      <span style="width:6px;height:6px;border-radius:50%;background:#E3B168"></span>
+      <span style="font-size:12px;font-weight:500;color:#F0D5A8">大当り</span>
+      <span style="font-size:11px;color:#7E8A96">— 復帰後のカウンタ値を入力</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isMove }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.25);padding:9px 20px">
+      <span style="width:6px;height:6px;border-radius:50%;background:#C6CDD3"></span>
+      <span style="font-size:12px;font-weight:500;color:#C6CDD3">新しいセッション</span>
+      <span style="font-size:11px;color:#7E8A96">— 打ち始めのカウンタ値を入力</span>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showBallBanner }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(107,203,221,0.12);border-bottom:1px solid rgba(107,203,221,0.4);padding:9px 20px">
+      <span style="width:6px;height:6px;border-radius:50%;background:#6BCBDD"></span>
+      <span style="font-size:12px;font-weight:500;color:#A8E0EC">持ち玉遊技中</span>
+      <span style="font-size:11px;color:#7E8A96">— 回転率計測から除外</span>
+    </div>
+  </sc-if>
+  <div style="padding:16px 20px 12px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;align-items:baseline;gap:10px">
+      <div style="font-size:14px;font-weight:500;letter-spacing:0.02em">{{ machineName }}</div>
+      <div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#7E8A96">{{ machineProb }}</div>
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#7E8A96">実質B <span style="color:#C6CDD3;font-weight:600">{{ borderStr }}</span> ・ 換金 <span style="color:#C6CDD3;font-weight:600">3.57</span> ・ 投資 <span style="color:#C6CDD3;font-weight:600">{{ investK }}</span> ・ 総回転 <span style="color:#C6CDD3;font-weight:600">{{ totalSpins }}</span></div>
+  </div>
+  <div style="height:1px;background:rgba(255,255,255,0.08);margin:0 20px"></div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 20px;gap:10px;min-height:0">
+    <div style="font-size:11px;letter-spacing:0.22em;color:#7E8A96">回転率</div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-top:-6px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:96px;font-weight:600;line-height:0.95;letter-spacing:-0.02em">{{ rateStr }}</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;color:#7E8A96">回/k</span>
+    </div>
+    <sc-if value="{{ isUp }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:12px;background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.25);border-radius:8px;padding:10px 14px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:#3ECF8E">▲ {{ diffStr }}</span>
+        <span style="font-size:11px;color:#7E8A96">ボーダー比</span>
+        <span style="margin-left:auto;font-size:11px;color:#7E8A96">期待値 <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#3ECF8E">{{ evStr }}</span></span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isDown }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;background:rgba(240,106,93,0.1);border:1px solid rgba(240,106,93,0.25);border-radius:8px;padding:10px 14px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:#F06A5D">▼ {{ diffStr }}</span>
+        <span style="font-size:11px;color:#7E8A96">ボーダー比</span>
+        <span style="margin-left:auto;font-size:11px;color:#7E8A96">期待値 <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#F06A5D">{{ evStr }}</span></span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noData }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:#5A646E">-- --</span>
+        <span style="font-size:11px;color:#7E8A96">ボーダー比</span>
+        <span style="margin-left:auto;font-size:11px;color:#7E8A96">期待値 <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:#5A646E">--</span></span>
+      </div>
+    </sc-if>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#5A646E"><span>千円ごとの回転</span><span style="font-family:'IBM Plex Mono',monospace">B={{ borderStr }}</span></div>
+      <div ref="{{ chartRef }}" style="overflow-x:auto;scrollbar-width:none">
+        <div style="width:max-content;min-width:100%">
+          <div style="position:relative;display:flex;align-items:flex-end;gap:5px;height:48px;width:max-content;min-width:100%">
+            <div style="position:absolute;left:0;right:0;bottom:{{ linePct }}%;border-top:1px dashed rgba(255,255,255,0.28)"></div>
+            <sc-for list="{{ bars }}" as="b" hint-placeholder-count="12">
+              <div style="flex:none;width:22px;height:{{ b.pct }}%;background:{{ b.bg }};border-radius:2px 2px 0 0"></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:3px;width:max-content;min-width:100%">
+            <sc-for list="{{ bars }}" as="b" hint-placeholder-count="12">
+              <div style="flex:none;width:22px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.2;color:{{ b.numColor }}">{{ b.spins }}</div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:12px 20px 16px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;gap:8px;justify-content:flex-start">
+      <sc-if value="{{ notHit }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ onHit }}" style="height:32px;display:flex;align-items:center;justify-content:center;padding:0 14px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:8px;font-size:12px;font-weight:500;color:#8A94A0;white-space:nowrap;opacity:{{ actionOpacity }};pointer-events:{{ actionPointer }};cursor:pointer" style-active="background:#1E242B">大当り</div>
+      </sc-if>
+      <sc-if value="{{ isHit }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ onHitCancel }}" style="height:32px;display:flex;align-items:center;justify-content:center;padding:0 14px;background:rgba(227,177,104,0.2);border:1px solid rgba(227,177,104,0.7);border-radius:8px;font-size:12px;font-weight:600;color:#F0D5A8;white-space:nowrap;cursor:pointer">大当り — 復帰値入力中 ✕</div>
+      </sc-if>
+      <div onClick="{{ onMove }}" style="height:32px;display:flex;align-items:center;justify-content:center;padding:0 14px;background:transparent;border:1px solid rgba(255,255,255,0.12);border-radius:8px;font-size:12px;font-weight:500;color:#8A94A0;white-space:nowrap;opacity:{{ moveOpacity }};pointer-events:{{ movePointer }};cursor:pointer" style-active="background:#1E242B">台移動</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;opacity:{{ modeOpacity }};pointer-events:{{ modePointer }}">
+      <sc-if value="{{ isCash }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;background:#101317;border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:3px">
+          <span style="background:#1E242B;border-radius:6px;white-space:nowrap;padding:5px 9px;font-size:12.5px;font-weight:500">現金</span>
+          <span onClick="{{ setBall }}" style="white-space:nowrap;padding:5px 9px;font-size:12.5px;color:#5A646E;cursor:pointer">持ち玉</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isBall }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;background:#101317;border:1px solid rgba(107,203,221,0.4);border-radius:8px;padding:3px">
+          <span onClick="{{ setCash }}" style="white-space:nowrap;padding:5px 9px;font-size:12.5px;color:#5A646E;cursor:pointer">現金</span>
+          <span style="background:rgba(107,203,221,0.16);border-radius:6px;white-space:nowrap;padding:5px 9px;font-size:12.5px;font-weight:500;color:#A8E0EC">持ち玉</span>
+        </div>
+      </sc-if>
+      </div>
+      <div onClick="{{ cycleUnit }}" style="opacity:{{ unitOpacity }};pointer-events:{{ unitPointer }};height:36px;display:flex;align-items:center;gap:4px;background:#101317;border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:0 9px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:#C6CDD3;white-space:nowrap;cursor:pointer" style-active="background:#1E242B">{{ unitLabel }}<span style="font-size:9px;color:#5A646E">⇅</span></div>
+      <div style="flex:1"></div>
+      <div onClick="{{ onUndo }}" style="height:36px;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0 12px;font-size:12.5px;color:#B7C0C8;white-space:nowrap;opacity:{{ undoOpacity }};cursor:pointer" style-active="background:#1E242B"><span style="font-size:15px">↺</span>戻す</div>
+    </div>
+    <div style="height:50px;display:flex;align-items:center;background:#101317;border:1px solid {{ inputBorder }};border-radius:10px;padding:0 14px;animation:{{ inputAnim }}">
+      <span style="font-size:10px;letter-spacing:0.12em;color:#7E8A96">カウンタ</span>
+      <span style="margin-left:10px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5A646E">{{ lastHint }}</span>
+      <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500">{{ typed }}<span style="display:inline-block;width:2px;height:22px;background:#6BCBDD;margin-left:3px;vertical-align:-3px;animation:omBlink 1.1s steps(1) infinite"></span></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <sc-for list="{{ keys }}" as="k" hint-placeholder-count="12">
+        <div onClick="{{ k.onTap }}" style="height:48px;display:flex;align-items:center;justify-content:center;background:#14171B;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:{{ k.fs }}px;color:{{ k.color }};cursor:pointer" style-active="background:#232A32">{{ k.label }}</div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ commitNormal }}" hint-placeholder-val="{{ true }}">
+      <div onClick="{{ onCommit }}" style="height:56px;display:flex;align-items:center;justify-content:center;gap:10px;background:#2FA8BF;border-radius:12px;cursor:pointer" style-active="filter:brightness(1.18)">
+        <span style="font-size:19px;font-weight:700;letter-spacing:0.2em;color:#06171B;text-indent:0.2em">決定</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:rgba(6,23,27,0.75)">{{ commitSub }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isHit }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ onCommit }}" style="height:56px;display:flex;align-items:center;justify-content:center;gap:10px;background:#D9A85C;border-radius:12px;cursor:pointer" style-active="filter:brightness(1.12)">
+        <span style="font-size:19px;font-weight:700;letter-spacing:0.2em;color:#1C1206;text-indent:0.2em">決定</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:rgba(28,18,6,0.7)">復帰後の値 → 持ち玉で継続</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ isMove }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ onCommit }}" style="height:56px;display:flex;align-items:center;justify-content:center;gap:10px;background:#E9EDF0;border-radius:12px;cursor:pointer" style-active="filter:brightness(0.92)">
+        <span style="font-size:19px;font-weight:700;letter-spacing:0.2em;color:#0B0D10;text-indent:0.2em">計測開始</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:rgba(11,13,16,0.6)">打ち始めの値</span>
+      </div>
+    </sc-if>
+  </div>
+  <sc-if value="{{ showRestore }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(6,8,10,0.76);z-index:20;display:flex;align-items:center;justify-content:center;padding:28px">
+      <div style="width:100%;background:#14171B;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:12px;animation:omUp 0.22s ease-out">
+        <div style="font-size:14px;font-weight:700">計測中のセッションがあります</div>
+        <div style="font-size:12.5px;color:#C6CDD3;line-height:1.7">{{ machineName }}<br><span style="font-family:'IBM Plex Mono',monospace;color:#7E8A96">投資 {{ investK }} ・ {{ totalSpins }}回転</span></div>
+        <div onClick="{{ resumeSession }}" style="height:48px;display:flex;align-items:center;justify-content:center;background:#2FA8BF;border-radius:10px;font-size:15px;font-weight:700;color:#06171B;cursor:pointer" style-active="filter:brightness(1.18)">計測を再開</div>
+        <div onClick="{{ endToPay }}" style="height:44px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:10px;font-size:13.5px;color:#C6CDD3;cursor:pointer" style-active="background:#1E242B">終了して収支入力へ</div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showMoveConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(6,8,10,0.76);z-index:20"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#14171B;border-top:1px solid rgba(255,255,255,0.12);border-radius:16px 16px 0 0;padding:20px 20px 26px;display:flex;flex-direction:column;gap:12px;animation:omUp 0.22s ease-out">
+      <div style="font-size:14px;font-weight:700">台移動しますか?</div>
+      <div style="font-size:12px;color:#7E8A96;line-height:1.7">現在のセッションを終了して収支に記録し、次の台の計測を開始します。<br><span style="font-family:'IBM Plex Mono',monospace;color:#C6CDD3">{{ machineName }} ・ 投資 {{ investK }} ・ {{ totalSpins }}回転</span></div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <div onClick="{{ moveConfirmGo }}" style="flex:1.3;height:50px;display:flex;align-items:center;justify-content:center;background:#E9EDF0;border-radius:10px;font-size:14.5px;font-weight:700;color:#0B0D10;cursor:pointer" style-active="filter:brightness(0.92)">台移動する</div>
+        <div onClick="{{ moveConfirmCancel }}" style="flex:1;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:10px;font-size:13.5px;color:#C6CDD3;cursor:pointer" style-active="background:#1E242B">続ける</div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(6,8,10,0.76);z-index:20"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#14171B;border-top:1px solid rgba(255,255,255,0.12);border-radius:16px 16px 0 0;padding:20px 20px 26px;display:flex;flex-direction:column;gap:12px;animation:omUp 0.22s ease-out">
+      <div style="font-size:14px;font-weight:700;color:#F0D5A8">入力値の確認</div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:15px;color:#C6CDD3">前回 {{ confirmPrev }} → 今回 {{ confirmNew }}</div>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:11px;color:#7E8A96">差分</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#F06A5D">{{ confirmDelta }}</span>
+      </div>
+      <div style="font-size:11.5px;color:#7E8A96;line-height:1.6">{{ confirmMsg }}</div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <div onClick="{{ onRetry }}" style="flex:1.3;height:50px;display:flex;align-items:center;justify-content:center;background:#2FA8BF;border-radius:10px;font-size:14.5px;font-weight:700;color:#06171B;cursor:pointer" style-active="filter:brightness(1.18)">入力し直す</div>
+        <div onClick="{{ onForce }}" style="flex:1;height:50px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:10px;font-size:13.5px;color:#C6CDD3;cursor:pointer" style-active="background:#1E242B">確定する</div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showPay }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(6,8,10,0.76);z-index:20"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#14171B;border-top:1px solid rgba(255,255,255,0.12);border-radius:16px 16px 0 0;padding:18px 20px 24px;display:flex;flex-direction:column;gap:10px;animation:omUp 0.22s ease-out">
+      <div style="display:flex;align-items:center">
+        <span style="font-size:14px;font-weight:700">{{ payTitle }}</span>
+        <span onClick="{{ payClose }}" style="margin-left:auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#7E8A96;cursor:pointer">✕</span>
+      </div>
+      <div style="font-size:11px;color:#7E8A96">{{ paySub }}</div>
+      <div style="height:52px;display:flex;align-items:center;background:#101317;border:1px solid rgba(107,203,221,0.35);border-radius:10px;padding:0 14px">
+        <span style="font-size:10px;letter-spacing:0.12em;color:#7E8A96">回収</span>
+        <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:500">{{ payDisplay }}<span style="display:inline-block;width:2px;height:24px;background:#6BCBDD;margin-left:3px;vertical-align:-3px;animation:omBlink 1.1s steps(1) infinite"></span></span>
+      </div>
+      <div onClick="{{ payZero }}" style="height:42px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.15);border-radius:9px;font-size:13px;color:#C6CDD3;cursor:pointer" style-active="background:#1E242B">回収なし ¥0</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
+        <sc-for list="{{ payKeys }}" as="k" hint-placeholder-count="12">
+          <div onClick="{{ k.onTap }}" style="height:44px;display:flex;align-items:center;justify-content:center;background:#101317;border:1px solid rgba(255,255,255,0.07);border-radius:9px;font-family:'IBM Plex Mono',monospace;font-weight:500;font-size:{{ k.fs }}px;color:{{ k.color }};cursor:pointer" style-active="background:#232A32">{{ k.label }}</div>
+        </sc-for>
+      </div>
+      <div onClick="{{ payConfirm }}" style="height:52px;display:flex;align-items:center;justify-content:center;background:#2FA8BF;border-radius:11px;font-size:16px;font-weight:700;color:#06171B;cursor:pointer" style-active="filter:brightness(1.18)">{{ payCta }}</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showPick }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(6,8,10,0.76);z-index:20"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;z-index:21;background:#14171B;border-top:1px solid rgba(255,255,255,0.12);border-radius:16px 16px 0 0;padding:20px 20px 26px;display:flex;flex-direction:column;gap:10px;animation:omUp 0.22s ease-out">
+      <div style="display:flex;align-items:center">
+        <span style="font-size:14px;font-weight:700">次の台 — 機種を選択</span>
+        <span onClick="{{ closePick }}" style="margin-left:auto;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#7E8A96;cursor:pointer">✕</span>
+      </div>
+      <div style="height:42px;display:flex;align-items:center;background:#101317;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:0 12px;font-size:12px;color:#5A646E">機種名を検索…</div>
+      <div onClick="{{ onPickSame }}" style="display:flex;align-items:center;gap:8px;border:1px solid rgba(107,203,221,0.45);background:rgba(107,203,221,0.08);border-radius:10px;padding:12px;cursor:pointer" style-active="background:rgba(107,203,221,0.16)">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <span style="font-size:13px;font-weight:500">{{ machineName }}</span>
+          <span style="font-size:10.5px;color:#6BCBDD">同じ機種 — ワンタップで開始</span>
+        </div>
+      </div>
+      <sc-for list="{{ machineRows }}" as="m" hint-placeholder-count="4">
+        <div onClick="{{ m.onPick }}" style="display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:11px 12px;cursor:pointer" style-active="background:#1E242B">
+          <span style="font-size:13px">{{ m.name }}</span>
+          <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7E8A96">{{ m.prob }} ・ B{{ m.borderStr }}</span>
+        </div>
+      </sc-for>
+      <div style="font-size:10px;color:#5A646E">前のセッションは収支記録に保存されました。新しいセッションとして計測を開始します。</div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showSummary }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(6,8,10,0.8);z-index:20;display:flex;align-items:center;justify-content:center;padding:24px">
+      <div style="width:100%;background:#14171B;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:14px;animation:omUp 0.22s ease-out">
+        <div style="font-size:14px;font-weight:700">セッションサマリー</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="display:flex;flex-direction:column;gap:3px;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:10px 12px">
+            <span style="font-size:9.5px;letter-spacing:0.1em;color:#7E8A96">回転率</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600">{{ sumRate }}<span style="font-size:10px;color:#7E8A96"> 回/k</span></span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:10px 12px">
+            <span style="font-size:9.5px;letter-spacing:0.1em;color:#7E8A96">総投資</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600">{{ sumInvestStr }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:10px 12px">
+            <span style="font-size:9.5px;letter-spacing:0.1em;color:#7E8A96">回収</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600">{{ payoutStr }}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;border:1px solid rgba(255,255,255,0.08);border-radius:9px;padding:10px 12px">
+            <span style="font-size:9.5px;letter-spacing:0.1em;color:#7E8A96">総回転</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600">{{ sumSpins }}<span style="font-size:10px;color:#7E8A96"> 回</span></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px;background:#101317;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px">
+            <span style="font-size:9.5px;letter-spacing:0.1em;color:#7E8A96">期待値</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;color:{{ evColor }}">{{ evTotalStr }}</span>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:3px;background:#101317;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px">
+            <span style="font-size:9.5px;letter-spacing:0.1em;color:#7E8A96">実収支</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:600;color:{{ balColor }}">{{ balanceStr }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ judgeUp }}" hint-placeholder-val="{{ true }}">
+          <div style="background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.25);border-radius:9px;padding:10px 12px;font-size:12px;color:#3ECF8E">判断は期待値プラスでした — 結果と独立に、正しい台選びです</div>
+        </sc-if>
+        <sc-if value="{{ judgeDown }}" hint-placeholder-val="{{ false }}">
+          <div style="background:rgba(240,106,93,0.1);border:1px solid rgba(240,106,93,0.25);border-radius:9px;padding:10px 12px;font-size:12px;color:#F06A5D">期待値マイナスの台でした — 台選びを見直す余地があります</div>
+        </sc-if>
+        <div style="font-size:11px;color:#7E8A96">期待値との乖離 <span style="font-family:'IBM Plex Mono',monospace;color:#C6CDD3">{{ gapStr }}</span></div>
+        <div onClick="{{ closeSummary }}" style="height:44px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:10px;font-size:13.5px;color:#C6CDD3;cursor:pointer" style-active="background:#1E242B">閉じる</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;color:#7E8A96;font-family:'IBM Plex Mono',monospace">履歴・収支（日別グルーピング）</div>
+<div data-screen-label="履歴画面" style="width:390px;height:844px;background:#0A0C0E;color:#E7ECEF;display:flex;flex-direction:column;overflow:hidden;user-select:none;border-radius:14px;border:1px solid rgba(255,255,255,0.08)">
+  <div style="padding:20px 20px 14px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:16px;font-weight:700">履歴・収支</div>
+    <div style="display:flex;gap:6px">
+      <span style="background:#1E242B;border:1px solid rgba(255,255,255,0.12);border-radius:999px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600">7月</span>
+      <span style="border:1px solid rgba(255,255,255,0.09);border-radius:999px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5A646E">6月</span>
+      <span style="border:1px solid rgba(255,255,255,0.09);border-radius:999px;padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5A646E">5月</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:10px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px">
+      <span style="font-size:10px;letter-spacing:0.1em;color:#7E8A96">7月収支</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:{{ monthColor }}">{{ monthBalStr }}</span>
+      <span style="margin-left:auto;font-size:10px;color:#7E8A96">期待値合計 <span style="font-family:'IBM Plex Mono',monospace;color:#C6CDD3">{{ monthEvStr }}</span></span>
+    </div>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:0 20px 20px;display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ days }}" as="d" hint-placeholder-count="3">
+      <div style="border:1px solid rgba(255,255,255,0.09);border-radius:11px;overflow:hidden">
+        <div onClick="{{ d.onToggle }}" style="display:flex;flex-direction:column;gap:7px;padding:12px 14px;cursor:pointer" style-active="background:#14171B">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:13px;font-weight:600">{{ d.date }}</span>
+            <span style="font-size:10.5px;color:#7E8A96">{{ d.count }}台</span>
+            <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;color:{{ d.balColor }}">{{ d.balStr }}</span>
+            <span style="color:#5A646E;font-size:11px">{{ d.chev }}</span>
+          </div>
+          <div style="display:flex;gap:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7E8A96">
+            <span>投資 <span style="color:#C6CDD3">{{ d.investStr }}</span></span>
+            <span>回収 <span style="color:#C6CDD3">{{ d.payoutStr }}</span></span>
+            <span>期待値 <span style="color:{{ d.evColor }}">{{ d.evStr }}</span></span>
+          </div>
+        </div>
+        <sc-if value="{{ d.open }}" hint-placeholder-val="{{ false }}">
+          <div style="border-top:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column">
+            <sc-for list="{{ d.sessions }}" as="ss" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.05)">
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+                  <span style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ss.machine }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#7E8A96">{{ ss.rateStr }}回/k ・ 投資{{ ss.investK }} ・ 回収{{ ss.payoutK }}</span>
+                </div>
+                <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;color:{{ ss.balColor }}">{{ ss.balStr }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:950,&quot;height&quot;:940},&quot;border&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:16.5,&quot;min&quot;:10,&quot;max&quot;:25,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;設定&quot;},&quot;demoData&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;設定&quot;}}">
+class Component extends DCLogic {
+  state = { added: [], addedBall: 0, lastCounter: null, typed: '', mode: 'cash', unit: 1000, mirror: false, undo: null, err: false, hit: false, machineIdx: 0, seeded: true, moveArmed: false, confirm: null, restore: true, sheet: null, payTyped: '', payout: 0, lastSum: null, done: [], openDays: { '7/22 火': true } };
+  chartRef = React.createRef();
+  snapChart() { const el = this.chartRef.current; if (el) el.scrollLeft = el.scrollWidth; }
+  componentDidMount() { this.snapChart(); }
+  componentDidUpdate() {
+    const len = (this.state.seeded ? 12 : 0) + this.state.added.length;
+    if (len !== this._len) { this._len = len; this.snapChart(); }
+  }
+  vib(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+  flagErr() {
+    this.vib([15, 40, 15]);
+    this.setState({ err: true });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ err: false }), 420);
+  }
+  machines() {
+    return [
+      { name: 'P大海物語5スペシャル', prob: '1/319.6', border: this.props.border ?? 16.5 },
+      { name: 'Pエヴァ15 未来への咆哮', prob: '1/319.9', border: 17.0 },
+      { name: 'Pからくりサーカス2', prob: '1/319.6', border: 16.8 },
+      { name: 'e Re:ゼロ season2', prob: '1/349.9', border: 17.2 }
+    ];
+  }
+  segsAll() {
+    const SEED = [17, 15, 19, 14, 16, 18, 15, 17, 16, 19, 15, 18];
+    const base = (this.state.seeded && (this.props.demoData ?? true)) ? SEED.map(v => ({ spins: v, yen: 1000 })) : [];
+    return base.concat(this.state.added);
+  }
+  curStats() {
+    const segs = this.segsAll();
+    const border = this.machines()[this.state.machineIdx].border;
+    const yen = segs.reduce((a, x) => a + x.yen, 0);
+    const spins = segs.reduce((a, x) => a + x.spins, 0);
+    const ballSpins = (this.state.seeded && (this.props.demoData ?? true) ? 23 : 0) + this.state.addedBall;
+    const rate = yen > 0 ? spins * 1000 / yen : null;
+    const ev = rate == null ? 0 : Math.round(yen * (rate - border) / border / 10) * 10;
+    return { segs, border, yen, spins, ballSpins, rate, ev };
+  }
+  tapKey(d) { this.vib(8); this.setState(s => ({ typed: d === '⌫' ? s.typed.slice(0, -1) : (s.typed + d).slice(0, 6) })); }
+  tapPay(d) { this.vib(8); this.setState(s => ({ payTyped: d === '⌫' ? s.payTyped.slice(0, -1) : (s.payTyped + d).slice(0, 7) })); }
+  finishSession(payout) {
+    const st = this.curStats();
+    const m = this.machines()[this.state.machineIdx];
+    return { date: '7/22 火', machine: m.name, rate: st.rate, invest: st.yen, payout: payout, ev: st.ev, spins: st.spins + st.ballSpins };
+  }
+  resetSession(machineIdx) {
+    return { machineIdx: machineIdx, added: [], addedBall: 0, lastCounter: null, seeded: false, typed: '', undo: null, mode: 'cash', hit: false };
+  }
+  doCommit(n, delta) {
+    this.vib(30);
+    const s = this.state;
+    const snap = { added: s.added, addedBall: s.addedBall, lastCounter: s.lastCounter };
+    if (s.mode === 'cash') this.setState(p => ({ added: [...p.added, { spins: delta, yen: p.unit }], lastCounter: n, typed: '', undo: snap, confirm: null }));
+    else this.setState(p => ({ addedBall: p.addedBall + delta, lastCounter: n, typed: '', undo: snap, confirm: null }));
+  }
+  commit() {
+    const s = this.state;
+    if (!s.typed) { this.flagErr(); return; }
+    const n = parseInt(s.typed, 10);
+    if (s.hit || s.moveArmed) {
+      if (!(n > 0)) { this.flagErr(); return; }
+      this.vib(40);
+      if (s.hit) this.setState({ lastCounter: n, typed: '', hit: false, mode: 'ball', undo: null, addedBall: s.addedBall });
+      else this.setState({ lastCounter: n, typed: '', moveArmed: false, undo: null });
+      return;
+    }
+    const last = s.lastCounter ?? (s.seeded && (this.props.demoData ?? true) ? 26143 : 0);
+    if (s.lastCounter == null && !(s.seeded && (this.props.demoData ?? true))) { this.vib(40); this.setState({ lastCounter: n, typed: '', undo: null }); return; }
+    const delta = n - last;
+    const limit = Math.max(1, Math.round(40 * s.unit / 1000));
+    if (delta <= 0 || delta > limit) { this.vib([15, 40, 15]); this.setState({ confirm: { prev: last, n: n, delta: delta } }); return; }
+    this.doCommit(n, delta);
+  }
+  undoLast() {
+    const u = this.state.undo;
+    if (!u || this.state.hit || this.state.moveArmed) return;
+    this.vib(20);
+    this.setState({ added: u.added, addedBall: u.addedBall, lastCounter: u.lastCounter, undo: null, typed: '' });
+  }
+  pickMachine(i) {
+    this.vib(15);
+    this.setState(Object.assign(this.resetSession(i), { sheet: null, moveArmed: true }));
+  }
+  fmtYen(v) { return (v >= 0 ? '+' : '−') + Math.abs(v).toLocaleString('en-US') + '円'; }
+  demoSessions() {
+    return [
+      { date: '7/21 月', machine: 'P大海物語5スペシャル', rate: 18.2, invest: 23000, payout: 41500, ev: 2400 },
+      { date: '7/21 月', machine: 'Pエヴァ15 未来への咆哮', rate: 16.1, invest: 15000, payout: 0, ev: -800 },
+      { date: '7/18 金', machine: 'Pからくりサーカス2', rate: 17.5, invest: 30000, payout: 22000, ev: 1250 }
+    ];
+  }
+  renderVals() {
+    const s = this.state;
+    const M = this.machines();
+    const cur = M[s.machineIdx];
+    const st = this.curStats();
+    const border = st.border;
+    const lastCounter = s.lastCounter ?? (s.seeded && (this.props.demoData ?? true) ? 26143 : 0);
+    const diff = st.rate == null ? null : st.rate - border;
+    const barVals = st.segs.map(x => x.spins * 1000 / x.yen);
+    const maxV = Math.max(border + 3, 1, ...barVals);
+    const bars = st.segs.map((seg, i) => {
+      const last = i === st.segs.length - 1;
+      const below = barVals[i] < border;
+      return {
+        pct: Math.min(100, barVals[i] / maxV * 100).toFixed(1),
+        bg: last ? '#6BCBDD' : (below ? 'rgba(240,106,93,0.32)' : 'rgba(107,203,221,0.4)'),
+        spins: seg.spins,
+        numColor: last ? '#6BCBDD' : (below ? '#9C5B54' : '#5A7A82')
+      };
+    });
+    const busy = s.hit || s.moveArmed;
+    const preStart = st.rate == null && !s.hit;
+    const mkKey = (label, fs, color, fn) => ({ label, fs, color, onTap: () => fn(label) });
+    const digitRow = (fn) => ['1','2','3','4','5','6','7','8','9'].map(d => mkKey(d, 24, '#E7ECEF', fn));
+    const bottomRow = (fn) => [mkKey('00', 18, '#E7ECEF', fn), mkKey('0', 24, '#E7ECEF', fn), mkKey('⌫', 19, '#7E8A96', fn)];
+    const c = s.confirm;
+    const sum = s.lastSum;
+    const sessions = s.done.concat(this.demoSessions());
+    const days = [];
+    sessions.forEach(ss => {
+      let d = days.find(x => x.date === ss.date);
+      if (!d) { d = { date: ss.date, list: [] }; days.push(d); }
+      d.list.push(ss);
+    });
+    const dayRows = days.map(d => {
+      const invest = d.list.reduce((a, x) => a + x.invest, 0);
+      const payout = d.list.reduce((a, x) => a + x.payout, 0);
+      const ev = d.list.reduce((a, x) => a + x.ev, 0);
+      const bal = payout - invest;
+      const open = !!s.openDays[d.date];
+      return {
+        date: d.date, count: d.list.length, open: open, chev: open ? '▴' : '▾',
+        balStr: this.fmtYen(bal), balColor: bal >= 0 ? '#3ECF8E' : '#F06A5D',
+        investStr: (invest / 1000).toFixed(1) + 'k', payoutStr: (payout / 1000).toFixed(1) + 'k',
+        evStr: this.fmtYen(ev), evColor: ev >= 0 ? '#3ECF8E' : '#F06A5D',
+        onToggle: () => this.setState(p => ({ openDays: Object.assign({}, p.openDays, { [d.date]: !p.openDays[d.date] }) })),
+        sessions: d.list.map(x => ({
+          machine: x.machine,
+          rateStr: x.rate == null ? '--.-' : x.rate.toFixed(1),
+          investK: (x.invest / 1000).toFixed(1) + 'k', payoutK: (x.payout / 1000).toFixed(1) + 'k',
+          balStr: this.fmtYen(x.payout - x.invest), balColor: (x.payout - x.invest) >= 0 ? '#3ECF8E' : '#F06A5D'
+        }))
+      };
+    });
+    const monthInvest = sessions.reduce((a, x) => a + x.invest, 0);
+    const monthPayout = sessions.reduce((a, x) => a + x.payout, 0);
+    const monthEv = sessions.reduce((a, x) => a + x.ev, 0);
+    const monthBal = monthPayout - monthInvest;
+    return {
+      isHit: s.hit, notHit: !s.hit, isMove: s.moveArmed,
+      commitNormal: !s.hit && !s.moveArmed,
+      isBall: s.mode === 'ball', isCash: s.mode === 'cash',
+      showBallBanner: s.mode === 'ball' && !busy,
+      machineName: cur.name, machineProb: cur.prob,
+      borderStr: border.toFixed(1),
+      investK: (st.yen / 1000).toFixed(1) + 'k',
+      totalSpins: st.spins + st.ballSpins,
+      rateStr: st.rate == null ? '--.-' : st.rate.toFixed(1),
+      isUp: diff != null && diff >= 0, isDown: diff != null && diff < 0, noData: diff == null,
+      diffStr: diff == null ? '' : (diff >= 0 ? '+' : '−') + Math.abs(diff).toFixed(1),
+      evStr: this.fmtYen(st.ev),
+      bars, chartRef: this.chartRef,
+      linePct: Math.min(96, border / maxV * 100).toFixed(1),
+      keys: digitRow(this.tapKey.bind(this)).concat(bottomRow(this.tapKey.bind(this))),
+      payKeys: digitRow(this.tapPay.bind(this)).concat(bottomRow(this.tapPay.bind(this))),
+      modeOpacity: (busy || preStart) ? 0.35 : 1, modePointer: (busy || preStart) ? 'none' : 'auto',
+      unitLabel: '+' + s.unit,
+      unitOpacity: (s.mode === 'ball' || busy || preStart) ? 0.35 : 1,
+      unitPointer: (s.mode === 'ball' || busy || preStart) ? 'none' : 'auto',
+      undoOpacity: (s.undo && !busy && !preStart) ? 1 : 0.35,
+      actionOpacity: preStart ? 0.3 : 1, actionPointer: preStart ? 'none' : 'auto',
+      moveOpacity: (busy || preStart) ? 0.3 : 1, movePointer: (busy || preStart) ? 'none' : 'auto',
+      typed: s.typed,
+      lastHint: s.hit ? '復帰後のカウンタ値を入力' : (s.moveArmed ? '打ち始めの値を入力' : (s.lastCounter == null && !s.seeded ? '打ち始めの値を入力' : '前回 ' + lastCounter)),
+      inputBorder: s.err ? 'rgba(240,106,93,0.8)' : 'rgba(107,203,221,0.35)',
+      inputAnim: s.err ? 'omShake 0.3s' : 'none',
+      commitSub: s.mode === 'cash' ? '+' + s.unit + '円' : '',
+      showRestore: s.restore && (this.props.demoData ?? true),
+      showConfirm: !!c,
+      showMoveConfirm: s.sheet === 'moveconfirm',
+      confirmPrev: c ? String(c.prev) : '', confirmNew: c ? String(c.n) : '',
+      confirmDelta: c ? (c.delta >= 0 ? '+' : '−') + Math.abs(c.delta).toLocaleString('en-US') : '',
+      confirmMsg: c ? (c.delta <= 0 ? '差分がマイナスです。カウンタの打ち間違いの可能性があります。' : '1000円あたりの回転数として異常に大きい値です。打ち間違いがないか確認してください。') : '',
+      showPay: s.sheet === 'endpay' || s.sheet === 'movepay',
+      payTitle: s.sheet === 'movepay' ? '台移動 — この台の回収額' : 'セッション終了 — 回収額を入力',
+      paySub: s.sheet === 'movepay' ? '現セッションを終了して収支に記録し、次の台へ進みます' : '回収額を入力すると収支レコードが完成します',
+      payCta: s.sheet === 'movepay' ? '記録して次の台へ' : '収支を確定',
+      payDisplay: (s.payTyped ? parseInt(s.payTyped, 10).toLocaleString('en-US') : '0') + '円',
+      showPick: s.sheet === 'pick',
+      machineRows: M.map((mm, i) => ({ name: mm.name, prob: mm.prob, borderStr: mm.border.toFixed(1), onPick: () => this.pickMachine(i) })),
+      showSummary: s.sheet === 'summary',
+      sumRate: sum ? (sum.rate == null ? '--.-' : sum.rate.toFixed(1)) : '--.-',
+      sumInvestStr: sum ? sum.invest.toLocaleString('en-US') + '円' : '',
+      payoutStr: sum ? sum.payout.toLocaleString('en-US') + '円' : '',
+      sumSpins: sum ? sum.spins : 0,
+      balanceStr: sum ? this.fmtYen(sum.payout - sum.invest) : '',
+      balColor: sum && (sum.payout - sum.invest) >= 0 ? '#3ECF8E' : '#F06A5D',
+      evTotalStr: sum ? this.fmtYen(sum.ev) : '', evColor: sum && sum.ev >= 0 ? '#3ECF8E' : '#F06A5D',
+      judgeUp: !!sum && sum.ev >= 0, judgeDown: !!sum && sum.ev < 0,
+      gapStr: sum ? this.fmtYen((sum.payout - sum.invest) - sum.ev) : '',
+      monthBalStr: this.fmtYen(monthBal), monthColor: monthBal >= 0 ? '#3ECF8E' : '#F06A5D',
+      monthEvStr: this.fmtYen(monthEv),
+      days: dayRows,
+      setBall: () => { if (busy) return; this.vib(15); this.setState({ mode: 'ball' }); },
+      setCash: () => { if (busy) return; this.vib(15); this.setState({ mode: 'cash' }); },
+      cycleUnit: () => { if (busy || this.state.mode === 'ball') return; this.vib(10); this.setState(p => ({ unit: p.unit === 1000 ? 500 : 1000 })); },
+      onHit: () => { if (busy) return; this.vib([20, 60, 20]); this.setState({ hit: true, typed: '' }); },
+      onHitCancel: () => { this.vib(10); this.setState({ hit: false, typed: '' }); },
+      onMove: () => { if (busy) return; this.vib(15); this.setState({ sheet: 'moveconfirm' }); },
+      moveConfirmGo: () => { this.vib(15); this.setState({ sheet: 'movepay', payTyped: '' }); },
+      moveConfirmCancel: () => this.setState({ sheet: null }),
+      onPickSame: () => this.pickMachine(this.state.machineIdx),
+      closePick: () => this.setState({ sheet: null }),
+      onUndo: () => this.undoLast(),
+      onCommit: () => this.commit(),
+      onRetry: () => { this.vib(10); this.setState({ confirm: null, typed: '' }); },
+      onForce: () => {
+        const cc = this.state.confirm;
+        if (!cc) return;
+        if (cc.delta > 0) this.doCommit(cc.n, cc.delta);
+        else { this.vib(30); this.setState({ lastCounter: cc.n, typed: '', confirm: null, undo: { added: this.state.added, addedBall: this.state.addedBall, lastCounter: this.state.lastCounter } }); }
+      },
+      resumeSession: () => { this.vib(15); this.setState({ restore: false }); },
+      endToPay: () => { this.vib(15); this.setState({ restore: false, sheet: 'endpay', payTyped: '' }); },
+      payClose: () => this.setState({ sheet: null }),
+      payZero: () => { this.vib(10); this.setState({ payTyped: '0' }); },
+      payConfirm: () => {
+        this.vib(30);
+        const payout = parseInt(this.state.payTyped || '0', 10);
+        const rec = this.finishSession(payout);
+        if (this.state.sheet === 'movepay') {
+          this.setState(p => ({ done: [rec, ...p.done], sheet: 'pick', payTyped: '', openDays: Object.assign({}, p.openDays, { '7/22 火': true }) }));
+        } else {
+          this.setState(p => ({ done: [rec, ...p.done], sheet: 'summary', payout: payout, lastSum: rec, openDays: Object.assign({}, p.openDays, { '7/22 火': true }) }));
+        }
+      },
+      closeSummary: () => this.setState(Object.assign(this.resetSession(this.state.machineIdx), { sheet: null }))
+    };
+  }
+}
+</script>
+</body>
+</html>
