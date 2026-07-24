@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&amp;family=IBM+Plex+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0e0c10;font-family:'IBM Plex Sans JP',system-ui,sans-serif}
+a{color:#FF7A38}a:hover{color:#FFCBA6}
+</style>
+</helmet>
+<section style="padding:40px 44px;display:flex;flex-direction:column;gap:24px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:20px;font-weight:700;color:#F1ECE3">説明バナー — 6案</div>
+    <div style="font-size:12.5px;color:#7E8A96;max-width:600px;line-height:1.7">「台のデータ表示機の回転数をそのまま入力」の見せ方。アイコンの種類・色・レイアウト違い。各案は幅350pxの計測画面カラム相当で表示。番号で選んでください。</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">
+
+    <div id="1a" style="width:350px;display:flex;flex-direction:column;gap:10px;background:#131116;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1a</span><span style="font-size:12.5px;font-weight:700;color:#F1ECE3">！マーク（現行改）</span></div>
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(242,106,33,0.1);border:1px solid rgba(242,106,33,0.35);border-radius:10px;padding:11px 13px">
+        <span style="width:24px;height:24px;flex:none;border-radius:50%;background:#FF7A38;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#2A1305">!</span>
+        <span style="font-size:12.5px;font-weight:600;line-height:1.4;color:#FFCBA6">台のデータ表示機の回転数を<br>そのまま入力してください</span>
+      </div>
+    </div>
+
+    <div id="1b" style="width:350px;display:flex;flex-direction:column;gap:10px;background:#131116;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1b</span><span style="font-size:12.5px;font-weight:700;color:#F1ECE3">左アクセントバー</span></div>
+      <div style="display:flex;align-items:stretch;background:rgba(242,106,33,0.08);border:1px solid rgba(242,106,33,0.3);border-radius:10px;overflow:hidden">
+        <div style="width:4px;flex:none;background:#FF7A38"></div>
+        <div style="display:flex;align-items:center;gap:9px;padding:11px 13px">
+          <span style="font-size:17px;color:#FF7A38">💡</span>
+          <span style="font-size:12.5px;font-weight:600;line-height:1.4;color:#F1ECE3">データ表示機の回転数を<br>そのまま入力</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="1c" style="width:350px;display:flex;flex-direction:column;gap:10px;background:#131116;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1c</span><span style="font-size:12.5px;font-weight:700;color:#F1ECE3">吹き出し型</span></div>
+      <div style="display:flex;flex-direction:column;gap:0;align-items:center">
+        <div style="background:#FF7A38;border-radius:10px;padding:10px 16px;text-align:center"><span style="font-size:12.5px;font-weight:700;line-height:1.4;color:#2A1305">台のデータ表示機の回転数をそのまま入力</span></div>
+        <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid #FF7A38"></div>
+      </div>
+    </div>
+
+    <div id="1d" style="width:350px;display:flex;flex-direction:column;gap:10px;background:#131116;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1d</span><span style="font-size:12.5px;font-weight:700;color:#F1ECE3">数字→矢印の図解</span></div>
+      <div style="display:flex;align-items:center;gap:11px;background:rgba(242,106,33,0.08);border:1px solid rgba(242,106,33,0.3);border-radius:10px;padding:11px 13px">
+        <span style="display:flex;flex-direction:column;align-items:center;gap:1px;flex:none"><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:700;color:#FF7A38">1243</span><span style="font-size:7px;letter-spacing:0.1em;color:#7E8A96">データ機</span></span>
+        <span style="font-size:16px;color:#FF7A38">→</span>
+        <span style="font-size:12px;font-weight:600;line-height:1.4;color:#F1ECE3">この回転数を<br>そのまま入力</span>
+      </div>
+    </div>
+
+    <div id="1e" style="width:350px;display:flex;flex-direction:column;gap:10px;background:#131116;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1e</span><span style="font-size:12.5px;font-weight:700;color:#F1ECE3">見出しラベル型</span></div>
+      <div style="display:flex;flex-direction:column;gap:5px;background:rgba(242,106,33,0.07);border:1px dashed rgba(242,106,33,0.4);border-radius:10px;padding:11px 13px">
+        <div style="display:flex;align-items:center;gap:6px"><span style="width:16px;height:16px;flex:none;border-radius:50%;background:rgba(242,106,33,0.25);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#FF7A38">i</span><span style="font-size:9.5px;font-weight:700;letter-spacing:0.14em;color:#FF7A38">入力のしかた</span></div>
+        <span style="font-size:12.5px;font-weight:600;line-height:1.4;color:#F1ECE3">台のデータ表示機の回転数をそのまま入力</span>
+      </div>
+    </div>
+
+    <div id="1f" style="width:350px;display:flex;flex-direction:column;gap:10px;background:#131116;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px">
+      <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1f</span><span style="font-size:12.5px;font-weight:700;color:#F1ECE3">ソリッド塗り（最強調）</span></div>
+      <div style="display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#FF7A38,#E8611C);border-radius:10px;padding:12px 14px;box-shadow:0 4px 18px rgba(242,106,33,0.25)">
+        <span style="width:24px;height:24px;flex:none;border-radius:50%;background:rgba(42,19,5,0.2);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#2A1305">!</span>
+        <span style="font-size:12.5px;font-weight:700;line-height:1.4;color:#2A1305">台のデータ表示機の回転数を<br>そのまま入力してください</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

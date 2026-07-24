@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&amp;family=IBM+Plex+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0e0c10;font-family:'IBM Plex Sans JP',system-ui,sans-serif}
+a{color:#FF7A38}a:hover{color:#FFCBA6}
+</style>
+</helmet>
+<section style="padding:40px 44px;display:flex;flex-direction:column;gap:26px">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:20px;font-weight:700;color:#F1ECE3">ホーム画面 — 3パターン</div>
+    <div style="font-size:12.5px;color:#7E8A96;max-width:640px;line-height:1.7">「開始」1個が主役、滞在2秒の通過点。各パターンで 状態A（通常）／状態B（復帰カード）／状態C（初回）を表示。番号で選んでください。</div>
+  </div>
+
+  <div id="1a" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1a</span>
+      <span style="font-size:13.5px;font-weight:700;color:#F1ECE3">計器フェイス型</span>
+      <span style="font-size:10.5px;color:#7E8A96">静かな中央、下部に大きな開始ボタン</span>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:radial-gradient(125% 50% at 50% 0%,rgba(242,106,33,0.13),rgba(242,106,33,0) 58%),#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E">状態A 通常</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:88px">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(242,106,33,0.14);border:1px solid rgba(242,106,33,0.4);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:#FF7A38">回</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.3em;color:#B7C0C8;text-indent:0.3em">パチ回転計</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:0 24px 0">
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 14px;cursor:pointer">
+            <span style="font-size:10px;color:#5A646E">前回</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8A94A0">7/22</span>
+            <span style="font-size:12px;color:#B7C0C8">ユニコーン</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8A94A0">18.3回/k</span>
+            <span style="margin-left:auto;font-size:12px;color:#5A646E">›</span>
+          </div>
+          <div style="height:76px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#FF7A38,#F26A21);border-radius:16px;box-shadow:0 8px 32px rgba(242,106,33,0.35);cursor:pointer">
+            <span style="font-size:21px;font-weight:700;letter-spacing:0.28em;color:#2A1305;text-indent:0.28em">計測開始</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:44px;padding:26px 0 30px">
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">足跡</span>
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">設定</span>
+        </div>
+      </div>
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:radial-gradient(125% 50% at 50% 0%,rgba(242,106,33,0.13),rgba(242,106,33,0) 58%),#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E">状態B 復帰カード</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:88px">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(242,106,33,0.14);border:1px solid rgba(242,106,33,0.4);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:#FF7A38">回</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.3em;color:#B7C0C8;text-indent:0.3em">パチ回転計</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="margin:0 20px;background:#14110d;border:1px solid rgba(242,106,33,0.45);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#FF7A38;box-shadow:0 0 8px rgba(255,122,56,0.8)"></span>
+            <span style="font-size:11.5px;font-weight:600;color:#FFCBA6">計測中のセッションがあります</span>
+          </div>
+          <div style="font-size:20px;font-weight:700">P ユニコーン 129</div>
+          <div style="display:flex;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:9px;letter-spacing:0.1em;color:#7E8A96">消化</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600">12k</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:9px;letter-spacing:0.1em;color:#7E8A96">総回転</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600">243</span></div>
+            <div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:9px;letter-spacing:0.1em;color:#7E8A96">回転率</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:#3ECF8E">18.3<span style="font-size:10px;color:#5F8B78">回/k</span></span></div>
+            <div style="margin-left:auto;display:flex;flex-direction:column;gap:2px;align-items:flex-end"><span style="font-size:9px;letter-spacing:0.1em;color:#7E8A96">最終入力</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:#E3B168">21:34</span></div>
+          </div>
+          <div style="height:64px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#FF7A38,#F26A21);border-radius:14px;box-shadow:0 6px 24px rgba(242,106,33,0.3);cursor:pointer;margin-top:2px">
+            <span style="font-size:18px;font-weight:700;letter-spacing:0.24em;color:#2A1305;text-indent:0.24em">再開</span>
+          </div>
+          <div style="height:48px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:13.5px;font-weight:600;color:#C6CDD3;cursor:pointer">終了して記録</div>
+          <div style="text-align:center;font-size:11.5px;color:#5A646E;cursor:pointer;padding:2px 0">このセッションを破棄</div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:44px;padding:26px 0 30px">
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">足跡</span>
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">設定</span>
+        </div>
+      </div>
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:radial-gradient(125% 50% at 50% 0%,rgba(242,106,33,0.13),rgba(242,106,33,0) 58%),#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E">状態C 初回</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:88px">
+          <div style="width:44px;height:44px;border-radius:12px;background:rgba(242,106,33,0.14);border:1px solid rgba(242,106,33,0.4);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:700;color:#FF7A38">回</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.3em;color:#B7C0C8;text-indent:0.3em">パチ回転計</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;flex-direction:column;gap:14px;padding:0 24px 0">
+          <div style="text-align:center;font-size:11.5px;color:#5A646E;padding:10px 14px">計測を終えると、ここに足跡が残ります</div>
+          <div style="height:76px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#FF7A38,#F26A21);border-radius:16px;box-shadow:0 8px 32px rgba(242,106,33,0.35);cursor:pointer">
+            <span style="font-size:21px;font-weight:700;letter-spacing:0.28em;color:#2A1305;text-indent:0.28em">計測開始</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:center;gap:44px;padding:26px 0 30px">
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">足跡</span>
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">設定</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="1b" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1b</span>
+      <span style="font-size:13.5px;font-weight:700;color:#F1ECE3">下半分ゾーン型</span>
+      <span style="font-size:10.5px;color:#7E8A96">親指圏全体が開始ボタン</span>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E;z-index:2">状態A 通常</div>
+        <div style="display:flex;align-items:center;gap:9px;padding:64px 26px 0">
+          <div style="width:30px;height:30px;border-radius:8px;background:rgba(242,106,33,0.14);border:1px solid rgba(242,106,33,0.4);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#FF7A38">回</div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.22em;color:#B7C0C8">パチ回転計</span>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin:0 26px 16px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;cursor:pointer">
+          <span style="font-size:10px;color:#5A646E">前回</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8A94A0">7/22</span>
+          <span style="font-size:12px;color:#B7C0C8">ユニコーン</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8A94A0">18.3回/k</span>
+          <span style="margin-left:auto;font-size:12px;color:#5A646E">›</span>
+        </div>
+        <div style="height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:linear-gradient(180deg,#FF7A38,#E8611C);border-radius:30px 30px 26px 26px;cursor:pointer;position:relative">
+          <span style="font-size:34px;font-weight:700;letter-spacing:0.22em;color:#2A1305;text-indent:0.22em">計測開始</span>
+          <span style="font-size:12px;color:rgba(42,19,5,0.6)">タップして計測をはじめる</span>
+          <div style="position:absolute;bottom:18px;left:0;right:0;display:flex;justify-content:center;gap:40px">
+            <span style="font-size:11.5px;color:rgba(42,19,5,0.55);cursor:pointer">足跡</span>
+            <span style="font-size:11.5px;color:rgba(42,19,5,0.55);cursor:pointer">設定</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E;z-index:2">状態B 復帰カード</div>
+        <div style="display:flex;align-items:center;gap:9px;padding:64px 26px 0">
+          <div style="width:30px;height:30px;border-radius:8px;background:rgba(242,106,33,0.14);border:1px solid rgba(242,106,33,0.4);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#FF7A38">回</div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.22em;color:#B7C0C8">パチ回転計</span>
+        </div>
+        <div style="flex:1"></div>
+        <div style="margin:0 0;background:#161009;border-top:1px solid rgba(242,106,33,0.5);border-radius:30px 30px 26px 26px;padding:26px 26px 22px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#FF7A38;box-shadow:0 0 8px rgba(255,122,56,0.8)"></span>
+            <span style="font-size:11.5px;font-weight:600;color:#FFCBA6">計測中のセッションがあります</span>
+            <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#E3B168">最終入力 21:34</span>
+          </div>
+          <div style="font-size:22px;font-weight:700">P ユニコーン 129</div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:9px;color:#7E8A96">消化</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600">12k</span></div>
+            <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:9px;color:#7E8A96">総回転</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600">243</span></div>
+            <div style="flex:1.2;background:rgba(62,207,142,0.08);border:1px solid rgba(62,207,142,0.25);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px"><span style="font-size:9px;color:#7E8A96">回転率</span><span style="font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:#3ECF8E">18.3<span style="font-size:10px;color:#5F8B78">回/k</span></span></div>
+          </div>
+          <div style="height:88px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#FF7A38,#E8611C);border-radius:18px;box-shadow:0 8px 28px rgba(242,106,33,0.32);cursor:pointer;margin-top:4px">
+            <span style="font-size:24px;font-weight:700;letter-spacing:0.26em;color:#2A1305;text-indent:0.26em">再開</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div style="flex:1;height:48px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:13.5px;font-weight:600;color:#C6CDD3;cursor:pointer">終了して記録</div>
+            <span style="flex:none;font-size:11.5px;color:#5A646E;cursor:pointer;padding:0 8px">破棄</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E;z-index:2">状態C 初回</div>
+        <div style="display:flex;align-items:center;gap:9px;padding:64px 26px 0">
+          <div style="width:30px;height:30px;border-radius:8px;background:rgba(242,106,33,0.14);border:1px solid rgba(242,106,33,0.4);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#FF7A38">回</div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.22em;color:#B7C0C8">パチ回転計</span>
+        </div>
+        <div style="flex:1"></div>
+        <div style="text-align:center;font-size:11.5px;color:#5A646E;margin:0 26px 16px;padding:10px 14px">計測を終えると、ここに足跡が残ります</div>
+        <div style="height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:linear-gradient(180deg,#FF7A38,#E8611C);border-radius:30px 30px 26px 26px;cursor:pointer;position:relative">
+          <span style="font-size:34px;font-weight:700;letter-spacing:0.22em;color:#2A1305;text-indent:0.22em">計測開始</span>
+          <span style="font-size:12px;color:rgba(42,19,5,0.6)">タップして計測をはじめる</span>
+          <div style="position:absolute;bottom:18px;left:0;right:0;display:flex;justify-content:center;gap:40px">
+            <span style="font-size:11.5px;color:rgba(42,19,5,0.55);cursor:pointer">足跡</span>
+            <span style="font-size:11.5px;color:rgba(42,19,5,0.55);cursor:pointer">設定</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="1c" style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:#2A1305;background:#FF7A38;border-radius:6px;padding:2px 8px">1c</span>
+      <span style="font-size:13.5px;font-weight:700;color:#F1ECE3">計器ダイヤル型</span>
+      <span style="font-size:10.5px;color:#7E8A96">円形の開始ボタン＝メーターのモチーフ</span>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:radial-gradient(90% 42% at 50% 78%,rgba(242,106,33,0.16),rgba(242,106,33,0) 65%),#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E">状態A 通常</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:80px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:0.34em;color:#C6CDD3;text-indent:0.34em">パチ回転計</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;color:#5A646E">SPIN RATE COUNTER</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin:0 40px 30px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;cursor:pointer;justify-content:center">
+          <span style="font-size:10px;color:#5A646E">前回</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8A94A0">7/22</span>
+          <span style="font-size:12px;color:#B7C0C8">ユニコーン</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8A94A0">18.3回/k</span>
+          <span style="font-size:12px;color:#5A646E">›</span>
+        </div>
+        <div style="display:flex;justify-content:center;padding-bottom:34px">
+          <div style="width:218px;height:218px;border-radius:50%;background:linear-gradient(180deg,#FF7A38,#E8611C);box-shadow:0 0 0 10px rgba(242,106,33,0.12),0 0 0 1px rgba(255,178,125,0.5) inset,0 12px 48px rgba(242,106,33,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer">
+            <span style="font-size:24px;font-weight:700;letter-spacing:0.2em;color:#2A1305;text-indent:0.2em">計測開始</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.18em;color:rgba(42,19,5,0.55)">START</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0 44px 30px">
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">足跡</span>
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">設定</span>
+        </div>
+      </div>
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:radial-gradient(90% 42% at 50% 78%,rgba(242,106,33,0.1),rgba(242,106,33,0) 65%),#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E">状態B 復帰カード</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:80px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:0.34em;color:#C6CDD3;text-indent:0.34em">パチ回転計</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;color:#5A646E">SPIN RATE COUNTER</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="margin:0 22px;background:#14110d;border:1px solid rgba(242,106,33,0.45);border-radius:20px;padding:22px;display:flex;flex-direction:column;gap:14px;align-items:center">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#FF7A38;box-shadow:0 0 8px rgba(255,122,56,0.8)"></span>
+            <span style="font-size:11.5px;font-weight:600;color:#FFCBA6">計測中のセッションがあります</span>
+          </div>
+          <div style="font-size:21px;font-weight:700">P ユニコーン 129</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#8A94A0">消化 <span style="color:#F1ECE3;font-weight:600">12k</span> ・ 総回転 <span style="color:#F1ECE3;font-weight:600">243</span> ・ <span style="color:#3ECF8E;font-weight:600">18.3回/k</span></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#E3B168">最終入力 21:34</div>
+          <div style="width:164px;height:164px;border-radius:50%;background:linear-gradient(180deg,#FF7A38,#E8611C);box-shadow:0 0 0 8px rgba(242,106,33,0.12),0 10px 36px rgba(242,106,33,0.38);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;margin-top:4px">
+            <span style="font-size:22px;font-weight:700;letter-spacing:0.22em;color:#2A1305;text-indent:0.22em">再開</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.18em;color:rgba(42,19,5,0.55)">RESUME</span>
+          </div>
+          <div style="width:100%;height:46px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.18);border-radius:12px;font-size:13.5px;font-weight:600;color:#C6CDD3;cursor:pointer;margin-top:4px">終了して記録</div>
+          <div style="font-size:11.5px;color:#5A646E;cursor:pointer">このセッションを破棄</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:24px 44px 30px">
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">足跡</span>
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">設定</span>
+        </div>
+      </div>
+
+      <div style="width:390px;height:844px;flex:none;border-radius:26px;overflow:hidden;position:relative;background:radial-gradient(90% 42% at 50% 78%,rgba(242,106,33,0.16),rgba(242,106,33,0) 65%),#0b0a0d;color:#F1ECE3;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.08)">
+        <div style="position:absolute;top:10px;left:0;right:0;text-align:center;font-size:9px;letter-spacing:0.2em;color:#5A646E">状態C 初回</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:80px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;letter-spacing:0.34em;color:#C6CDD3;text-indent:0.34em">パチ回転計</div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0.2em;color:#5A646E">SPIN RATE COUNTER</div>
+        </div>
+        <div style="flex:1"></div>
+        <div style="text-align:center;font-size:11.5px;color:#5A646E;margin:0 40px 30px;padding:10px 14px">計測を終えると、ここに足跡が残ります</div>
+        <div style="display:flex;justify-content:center;padding-bottom:34px">
+          <div style="width:218px;height:218px;border-radius:50%;background:linear-gradient(180deg,#FF7A38,#E8611C);box-shadow:0 0 0 10px rgba(242,106,33,0.12),0 0 0 1px rgba(255,178,125,0.5) inset,0 12px 48px rgba(242,106,33,0.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer">
+            <span style="font-size:24px;font-weight:700;letter-spacing:0.2em;color:#2A1305;text-indent:0.2em">計測開始</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.18em;color:rgba(42,19,5,0.55)">START</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:0 44px 30px">
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">足跡</span>
+          <span style="font-size:12px;color:#5A646E;cursor:pointer">設定</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

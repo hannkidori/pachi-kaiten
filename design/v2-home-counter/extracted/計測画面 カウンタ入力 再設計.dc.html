@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&amp;family=IBM+Plex+Sans+JP:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0d0f;font-family:'IBM Plex Sans JP',system-ui,sans-serif}
+a{color:#56D9F0}a:hover{color:#A9E7F2}
+div::-webkit-scrollbar{display:none}
+@keyframes omBlink{50%{opacity:0}}
+</style>
+</helmet>
+<div style="padding:40px 48px;display:flex;flex-direction:column;gap:26px;color:#E9EEF1">
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:22px;font-weight:700;letter-spacing:0.01em">計測画面 — カウンタ入力の再設計</div>
+    <div style="font-size:13px;color:#7E8A96;line-height:1.6;max-width:760px">前回値を<span style="color:#8A94A0">表示専用の参照</span>として入力欄から分離。入力中も常に見えるので「台の数字が増えているはず」の確認が一瞥でできる。ラベル「カウンタ」は削除。1日50回・3秒ずつ見る場所として一瞥性を最優先。</div>
+  </div>
+
+  <div style="display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- STATE A: 通常計測中 -->
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#7E8A96">通常の計測中</div>
+      <div data-screen-label="入力 通常" style="width:372px;background:radial-gradient(125% 60% at 50% 100%,rgba(86,217,240,0.09),rgba(86,217,240,0) 60%),#08090b;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:16px 18px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px;align-items:stretch">
+          <div style="flex:none;width:88px;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:0 4px">
+            <span style="font-size:9px;letter-spacing:0.16em;color:#5A646E">前回</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#A2ABB4;line-height:1">128</span>
+          </div>
+          <div style="flex:1;height:66px;display:flex;align-items:center;justify-content:flex-end;background:#0e1214;border:1px solid rgba(86,217,240,0.5);border-radius:12px;padding:0 18px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:42px;font-weight:600;color:#E9EEF1">274</span>
+            <span style="width:3px;height:42px;background:#56D9F0;animation:omBlink 1.1s step-end infinite;margin-left:6px"></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">1</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">2</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">3</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">4</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">5</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">6</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">7</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">8</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">9</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:17px;color:#E9EEF1">00</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">0</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:18px;color:#7E8A96">⌫</div>
+        </div>
+        <div style="height:54px;display:flex;align-items:center;justify-content:center;gap:10px;background:#35C3DF;border-radius:12px">
+          <span style="font-size:18px;font-weight:700;letter-spacing:0.2em;color:#04262E;text-indent:0.2em">決定</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:rgba(4,38,46,0.72)">+1000円分</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE B: 打ち始め -->
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#7E8A96">打ち始め（初回入力）</div>
+      <div data-screen-label="入力 打ち始め" style="width:372px;background:radial-gradient(125% 60% at 50% 100%,rgba(86,217,240,0.09),rgba(86,217,240,0) 60%),#08090b;border-radius:16px;border:1px solid rgba(255,255,255,0.08);padding:16px 18px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px;align-items:stretch">
+          <div style="flex:none;width:88px;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:0 4px">
+            <span style="font-size:9px;letter-spacing:0.16em;color:#5A646E">前回</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:#3A424B;line-height:1">—</span>
+          </div>
+          <div style="flex:1;height:66px;display:flex;align-items:center;justify-content:flex-end;background:#0e1214;border:1px solid rgba(86,217,240,0.5);border-radius:12px;padding:0 16px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:22px;color:#3A424B">打ち始めの数字</span>
+            <span style="width:3px;height:32px;background:#56D9F0;animation:omBlink 1.1s step-end infinite;margin-left:5px"></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">1</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">2</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">3</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">4</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">5</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">6</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">7</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">8</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">9</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:17px;color:#E9EEF1">00</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">0</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:18px;color:#7E8A96">⌫</div>
+        </div>
+        <div style="height:54px;display:flex;align-items:center;justify-content:center;gap:10px;background:#E9EDF0;border-radius:12px">
+          <span style="font-size:18px;font-weight:700;letter-spacing:0.2em;color:#0B0D10;text-indent:0.2em">計測開始</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:rgba(11,13,16,0.6)">打ち始めの値</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE C: 大当り復帰 -->
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#C9A15E">大当り復帰値の入力中</div>
+      <div data-screen-label="入力 大当り復帰" style="width:372px;background:radial-gradient(125% 60% at 50% 100%,rgba(227,177,104,0.08),rgba(227,177,104,0) 60%),#08090b;border-radius:16px;border:1px solid rgba(227,177,104,0.28);padding:16px 18px 20px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:10px;align-items:stretch">
+          <div style="flex:none;width:88px;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:0 4px">
+            <span style="font-size:9px;letter-spacing:0.14em;color:#C9A15E">大当り</span>
+            <span style="font-size:12px;font-weight:600;color:#B79355;line-height:1.35">復帰後の<br>台の数字を</span>
+          </div>
+          <div style="flex:1;height:66px;display:flex;align-items:center;justify-content:flex-end;background:#161206;border:1px solid rgba(227,177,104,0.6);border-radius:12px;padding:0 16px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:22px;color:#6E5C34">復帰後の数字</span>
+            <span style="width:3px;height:32px;background:#E3B168;animation:omBlink 1.1s step-end infinite;margin-left:5px"></span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">1</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">2</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">3</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">4</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">5</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">6</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">7</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">8</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">9</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:17px;color:#E9EEF1">00</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:23px;color:#E9EEF1">0</div>
+          <div style="height:46px;display:flex;align-items:center;justify-content:center;background:#11161a;border:1px solid rgba(255,255,255,0.07);border-radius:10px;font-family:'IBM Plex Mono',monospace;font-size:18px;color:#7E8A96">⌫</div>
+        </div>
+        <div style="height:54px;display:flex;align-items:center;justify-content:center;gap:10px;background:#D9A85C;border-radius:12px">
+          <span style="font-size:18px;font-weight:700;letter-spacing:0.2em;color:#1C1206;text-indent:0.2em">決定</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:rgba(28,18,6,0.7)">復帰後の値</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 変更メモ -->
+    <div style="width:296px;display:flex;flex-direction:column;gap:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:22px">
+      <div style="font-size:13px;font-weight:700;letter-spacing:0.04em;color:#A9E7F2">設計判断</div>
+      <div style="display:flex;flex-direction:column;gap:13px;font-size:12px;line-height:1.65;color:#B7C0C8">
+        <div><span style="color:#8A94A0;font-weight:600">前回値＝参照専用</span><br>枠なし・一段暗い文字・タップ不能。入力欄と造形を明確に分離し、入力中もずっと見える。</div>
+        <div><span style="color:#56D9F0;font-weight:600">入力欄を主役に</span><br>枠付き・幅広で、3〜4桁＋カーソルが等幅で快適に収まる。右寄せで最新桁が安定。</div>
+        <div><span style="color:#C6CDD3;font-weight:600">「カウンタ」ラベル削除</span><br>前回値とパッドの存在で欄の意味は自明。</div>
+        <div><span style="color:#C9A15E;font-weight:600">大当り復帰中</span><br>前回値との連続性が切れるため数値は出さず、参照枠を「復帰後の値を入力」の文脈表示（アンバー）に切替。入力欄・決定もアンバー。</div>
+        <div style="color:#7E8A96">左2:右8。1日50回×3秒の一瞥性を最優先。</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

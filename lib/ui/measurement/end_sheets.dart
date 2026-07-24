@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/machine.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/counter_field.dart';
 import '../widgets/numpad.dart';
 
 BoxDecoration _sheetDeco() => const BoxDecoration(
@@ -424,7 +425,6 @@ class _NewCounterSheetState extends State<_NewCounterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final display = _typed.isEmpty ? '0' : _typed;
     return Container(
       decoration: _sheetDeco(),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -435,23 +435,10 @@ class _NewCounterSheetState extends State<_NewCounterSheet> {
           Text(widget.machine.name,
               style: AppTheme.sans(size: 13, weight: FontWeight.w500)),
           const SizedBox(height: 8),
-          Container(
-            height: 52,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              border: Border.all(color: const Color(0x5956D9F0)),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Text('打ち始めカウンタ',
-                    style: AppTheme.sans(size: 10, color: AppColors.muted)),
-                const Spacer(),
-                Text(display,
-                    style: AppTheme.mono(size: 24, weight: FontWeight.w500)),
-              ],
-            ),
+          CounterField(
+            typed: _typed,
+            prevCounter: null, // 打ち始め=前回「—」
+            placeholder: '打ち始めの数字',
           ),
           const SizedBox(height: 10),
           Numpad(

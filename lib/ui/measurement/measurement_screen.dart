@@ -10,6 +10,7 @@ import '../../state/measurement_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../util/format.dart';
 import '../start/machine_sheets.dart';
+import '../widgets/counter_field.dart';
 import '../widgets/numpad.dart';
 import 'end_sheets.dart';
 import 'rotation_chart.dart';
@@ -793,7 +794,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   }
 
   Widget _counterInput() {
-    final hint = c.isHit ? '復帰後のカウンタ値を入力' : '前回 ${c.lastCounter}';
     return AnimatedBuilder(
       animation: _shake,
       builder: (context, child) {
@@ -801,31 +801,12 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         final dx = t == 0 ? 0.0 : 5 * (1 - t) * _sinish(t);
         return Transform.translate(offset: Offset(dx, 0), child: child);
       },
-      child: Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          border: Border.all(
-              color: c.isError
-                  ? const Color(0xCCF06A5D)
-                  : const Color(0x5956D9F0)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Text('カウンタ',
-                style: AppTheme.sans(
-                    size: 10, color: AppColors.muted, letterSpacing: 0.12 * 10)),
-            const SizedBox(width: 10),
-            Text(hint, style: AppTheme.mono(size: 11, color: AppColors.mutedDark)),
-            const Spacer(),
-            Text(c.typed,
-                style:
-                    AppTheme.mono(size: 22, weight: FontWeight.w500)),
-            const _BlinkingCursor(),
-          ],
-        ),
+      child: CounterField(
+        typed: c.typed,
+        prevCounter: c.isHit ? null : c.lastCounter,
+        rebase: c.isHit,
+        error: c.isError,
+        placeholder: c.isHit ? '復帰後の数字' : '台の数字',
       ),
     );
   }
@@ -969,46 +950,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                 weight: primary ? FontWeight.w700 : FontWeight.w400,
                 color: primary ? AppColors.accentInk : AppColors.textStrong)),
       ),
-    );
-  }
-}
-
-/// カーソルの点滅(1.1s)。
-class _BlinkingCursor extends StatefulWidget {
-  const _BlinkingCursor();
-
-  @override
-  State<_BlinkingCursor> createState() => _BlinkingCursorState();
-}
-
-class _BlinkingCursorState extends State<_BlinkingCursor>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1100),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, _) {
-        return Opacity(
-          opacity: _ctrl.value < 0.5 ? 1 : 0,
-          child: Container(
-            width: 2,
-            height: 22,
-            margin: const EdgeInsets.only(left: 3),
-            color: AppColors.accent,
-          ),
-        );
-      },
     );
   }
 }

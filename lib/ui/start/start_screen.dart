@@ -4,6 +4,7 @@ import '../../models/machine.dart';
 import '../../models/session.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/counter_field.dart';
 import '../widgets/dashed_border.dart';
 import '../widgets/numpad.dart';
 import 'machine_sheets.dart';
@@ -422,28 +423,13 @@ class _StartScreenState extends State<StartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('台の上の回転数をそのまま入力',
+          Text('台のデータ表示機の回転数をそのまま入力',
               style: AppTheme.sans(size: 9.5, color: AppColors.muted)),
           const SizedBox(height: 6),
-          Container(
-            height: 58,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            alignment: Alignment.centerRight,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              border: Border.all(color: const Color(0x5956D9F0)),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text(
-                _counter.isEmpty ? '打ち始めの回転数' : _counter,
-                style: _counter.isEmpty
-                    ? AppTheme.sans(size: 15, color: AppColors.faint)
-                    : AppTheme.mono(size: 40, weight: FontWeight.w700),
-              ),
-            ),
+          CounterField(
+            typed: _counter,
+            prevCounter: null, // 打ち始め=前回「—」
+            placeholder: '打ち始めの数字',
           ),
           const SizedBox(height: 8),
           Numpad(
