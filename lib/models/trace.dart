@@ -9,6 +9,7 @@ class Trace {
   final String date; // YYYY-MM-DD
   final String? machineName; // null=クイック計測
   final double? rotationRate; // 回/k
+  final double? borderDiff; // ボーダー差分 R−B。ボーダー不明/クイックは null
   final int totalRotations;
   final int? evYen; // 期待値(円)
   final int consumedYen; // 消化した総額(円)
@@ -21,6 +22,7 @@ class Trace {
     required this.date,
     this.machineName,
     this.rotationRate,
+    this.borderDiff,
     required this.totalRotations,
     this.evYen,
     required this.consumedYen,
@@ -35,6 +37,7 @@ class Trace {
       'date': date,
       'machine_name': machineName,
       'rotation_rate': rotationRate,
+      'border_diff': borderDiff,
       'total_rotations': totalRotations,
       'ev_yen': evYen,
       'consumed_yen': consumedYen,
@@ -50,6 +53,7 @@ class Trace {
       date: map['date'] as String,
       machineName: map['machine_name'] as String?,
       rotationRate: (map['rotation_rate'] as num?)?.toDouble(),
+      borderDiff: (map['border_diff'] as num?)?.toDouble(),
       totalRotations: (map['total_rotations'] as num).toInt(),
       evYen: (map['ev_yen'] as num?)?.toInt(),
       consumedYen: (map['consumed_yen'] as num).toInt(),

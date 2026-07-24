@@ -178,6 +178,7 @@ class SessionService {
       date: session.date,
       machineName: machine?.name, // null=クイック計測
       rotationRate: stats.rotationRate,
+      borderDiff: stats.borderDiff,
       totalRotations: stats.totalRotations,
       evYen: stats.expectedValue?.round(),
       consumedYen: stats.consumedYen,
@@ -191,6 +192,7 @@ class SessionService {
       date: trace.date,
       machineName: trace.machineName,
       rotationRate: trace.rotationRate,
+      borderDiff: trace.borderDiff,
       totalRotations: trace.totalRotations,
       evYen: trace.evYen,
       consumedYen: trace.consumedYen,

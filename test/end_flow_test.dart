@@ -47,6 +47,8 @@ void main() {
       expect(t.totalRotations, 40);
       expect(t.plYen, 3000); // 回収5000 - 消化2000
       expect(t.rotationRate, closeTo(20.0, 1e-9));
+      expect(t.borderDiff, closeTo(20.0 - 16.5, 1e-9)); // ホームの前回比用
+
 
       // セッションは closed に、active は無くなる。
       expect((await sessionRepo.byId(s.id!))!.state, SessionState.closed);

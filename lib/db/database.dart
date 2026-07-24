@@ -14,7 +14,8 @@ class AppDatabase {
   // リリース前のためマイグレーション履歴は積まず、スキーマ変更時は作り直す。
   // v0-full が 3 を使っていたため、それより上の値にして旧DBを確実に作り直す。
   // v5: クイック計測対応で machine_id / machine_name を nullable 化。
-  static const _dbVersion = 5;
+  // v6: 足跡にボーダー差分(border_diff)を追加(ホームの前回比ヒーロー用)。
+  static const _dbVersion = 6;
 
   Database? _db;
 
@@ -111,6 +112,7 @@ class AppDatabase {
       date TEXT NOT NULL,
       machine_name TEXT,
       rotation_rate REAL,
+      border_diff REAL,
       total_rotations INTEGER NOT NULL,
       ev_yen INTEGER,
       consumed_yen INTEGER NOT NULL,
