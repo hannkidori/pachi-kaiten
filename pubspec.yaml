@@ -40,13 +40,14 @@ dependencies:
   path: ^1.9.0
 
   # Keep screen awake while measuring
-  # 1.5.2 が win32 ^5 系の上限(1.6.0+ は win32 ^6 を要求し、win32 ^5 に固定された
-  # file_picker 8 の Windows 実装がコンパイル不能になるため上げられない)。
-  wakelock_plus: ^1.5.2
+  # file_picker 撤去で win32 ^5 固定が外れたため win32 ^6 系の最新へ更新。
+  wakelock_plus: ^1.7.0
 
   # Export(share)+ resolve app dirs。エクスポート専用(インポートは廃止したため
-  # file_picker は不要)。share_plus は新 API(SharePlus.instance.share)の 12.x。
-  share_plus: ^12.0.0
+  # file_picker は不要)。Dart API(SharePlus.instance.share)は 12→13 で無変更。
+  # 注: AGP 9.0 の "kotlin.android は不要" 警告はプラグイン側が kotlin.android を
+  # 適用し続けるため最新版でも残る(benign。AGP10/生態系移行で解消予定)。
+  share_plus: ^13.0.0
   path_provider: ^2.1.5
 
   # 日付・数値フォーマット
