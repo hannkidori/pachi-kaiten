@@ -11,7 +11,9 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'pachi_kaiten.db';
-  static const _dbVersion = 1;
+  // リリース前のためマイグレーション履歴は積まず、スキーマ変更時は作り直す。
+  // v0-full が 3 を使っていたため、それより上の値にして旧DBを確実に作り直す。
+  static const _dbVersion = 4;
 
   Database? _db;
 
@@ -27,11 +29,34 @@ class AppDatabase {
       version: _dbVersion,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: _onCreate,
+      // バージョン差(上げ/下げ問わず)は既存テーブルを全破棄して作り直す。
+      // 旧スキーマ(v0-full の machine_id TEXT 等)との非互換を丸ごと解消する。
+      onUpgrade: (db, _, _) => _recreate(db),
+      onDowngrade: (db, _, _) => _recreate(db),
     );
   }
 
   Future<void> _onCreate(Database db, int version) async {
     final batch = db.batch();
+    for (final stmt in createStatements) {
+      batch.execute(stmt);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  /// 既存のユーザーテーブルを全て drop してスキーマを再生成する。
+  /// リリース前のため旧データは保持しない(方針: スキーマ変更＝作り直し)。
+  Future<void> _recreate(Database db) async {
+    final tables = await db.query(
+      'sqlite_master',
+      columns: ['name'],
+      where: "type = 'table' AND name NOT LIKE 'sqlite_%' "
+          "AND name NOT LIKE 'android_%'",
+    );
+    final batch = db.batch();
+    for (final row in tables) {
+      batch.execute('DROP TABLE IF EXISTS "${row['name']}"');
+    }
     for (final stmt in createStatements) {
       batch.execute(stmt);
     }
