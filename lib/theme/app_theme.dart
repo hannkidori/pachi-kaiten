@@ -1,31 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// 確定デザイン(Claude Design プロトタイプ)から抽出したカラートークン。
+/// 確定デザイン(Claude Design ハンドオフ v2)から抽出したカラートークン。
 /// ダークテーマのみ。数字は等幅(IBM Plex Mono)、和文は IBM Plex Sans JP。
 class AppColors {
   AppColors._();
 
   // 背景・面
-  static const bg = Color(0xFF0A0C0E); // 画面背景(純黒近く)
-  static const surface = Color(0xFF14171B); // カード / キー
-  static const surfaceAlt = Color(0xFF101317); // 入力枠 / トグル地
-  static const keyActive = Color(0xFF232A32); // キー押下
-  static const chipActive = Color(0xFF1E242B);
+  static const bg = Color(0xFF08090B); // 画面背景(ほぼ純黒)
+  static const surface = Color(0xFF11161A); // キー / シート / カード面
+  static const surfaceAlt = Color(0xFF0E1214); // 入力欄 / チップ内背景
+  static const keyActive = Color(0xFF1E262C); // キー押下
+  static const chipActive = Color(0xFF1E262C);
 
   // テキスト
-  static const text = Color(0xFFE7ECEF); // 主
+  static const text = Color(0xFFE9EEF1); // 主
   static const textStrong = Color(0xFFC6CDD3);
   static const textDim = Color(0xFFB7C0C8);
-  static const muted = Color(0xFF7E8A96);
-  static const mutedDark = Color(0xFF5A646E);
+  static const muted = Color(0xFF7E8A96); // ラベル・説明
+  static const mutedDark = Color(0xFF5A646E); // 最弱
+  static const faint = Color(0xFF3A424B); // プレースホルダ
   static const subtle = Color(0xFF8A94A0);
 
-  // アクセント(氷青)
-  static const accent = Color(0xFF6BCBDD);
-  static const accentDeep = Color(0xFF2FA8BF); // 決定ボタン地
-  static const accentInk = Color(0xFF06171B); // 決定ボタン文字
-  static const accentSoft = Color(0xFFA8E0EC);
+  // アクセント(氷青シアン)
+  static const accent = Color(0xFF56D9F0); // カーソル・選択・最新棒・ドット
+  static const accentDeep = Color(0xFF35C3DF); // 塗りボタン(決定・保存)
+  static const accentInk = Color(0xFF04262E); // シアンボタン上の文字(on-accent)
+  static const accentSoft = Color(0xFFA9E7F2); // シアン枠内の文字(tintText)
+  // 主役ボタン(計測スタート・終了する)のグラデーション(180deg)。
+  static const accentGradTop = Color(0xFF66E0F5);
+  static const accentGradBottom = Color(0xFF2FBBD9);
 
   // ボーダー上=緑 / 下=赤
   static const up = Color(0xFF3ECF8E);
@@ -46,6 +50,13 @@ class AppColors {
   static const hair = Color(0x14FFFFFF); // rgba(255,255,255,0.08)
   static const hairFaint = Color(0x0FFFFFFF); // 0.06
   static const border = Color(0x17FFFFFF); // 0.09
+
+  /// 主役ボタンのグラデーション(上→下)。
+  static const accentGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [accentGradTop, accentGradBottom],
+  );
 }
 
 class AppTheme {
