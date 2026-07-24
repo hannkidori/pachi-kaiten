@@ -78,6 +78,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _load();
   }
 
+  Future<void> _resetOnboarding() async {
+    await s.settings.resetOnboarding();
+    _toast('次回の計測から説明を表示します');
+  }
+
   Future<void> _export() async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -104,8 +109,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _section('計測'),
                   _addUnitRow(),
                   _ballPriceRow(),
+                  _hint('機種のボーダーは貸玉ごとに登録できます'),
                   _keepAwakeRow(),
-                  _section('機種マスタ'),
+                  _hint('計測中、画面を消灯しません'),
+                  _section('機種'),
                   if (_machines.isEmpty)
                     Padding(
                       padding:
@@ -115,16 +122,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               size: 12, color: AppColors.mutedDark)),
                     ),
                   for (final m in _machines) _machineRow(m),
-                  _section('バックアップ'),
-                  _actionRow('エクスポート(共有)', Icons.ios_share, _export),
-                  const SizedBox(height: 8),
+                  _section('データ'),
+                  _actionRow('足跡と機種をファイルに保存', Icons.ios_share, _export),
+                  _hint('機種変更時の持ち出し用(JSON)'),
+                  _actionRow('はじめての説明をもう一度見る', Icons.replay,
+                      _resetOnboarding),
+                  _section('このアプリ'),
+                  _hint('広告なし・通信なし。計測データはこの端末の中だけにあります'),
+                  const SizedBox(height: 6),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      '登録機種と足跡を JSON で書き出します(機種変更時の持ち出し用)。',
-                      style:
-                          AppTheme.sans(size: 10.5, color: AppColors.mutedDark),
-                    ),
+                    child: Text('パチ回転計 v1.0.0',
+                        style: AppTheme.mono(
+                            size: 11, color: AppColors.mutedDark)),
                   ),
                 ],
               ),
@@ -141,7 +151,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back, color: AppColors.textDim),
           ),
-          Text('設定', style: AppTheme.sans(size: 17, weight: FontWeight.w700)),
+          Text('設定', style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
         ],
       ),
     );
@@ -153,6 +163,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(title,
           style: AppTheme.sans(
               size: 11, color: AppColors.muted, letterSpacing: 0.1 * 11)),
+    );
+  }
+
+  /// 説明・注記の 1 行(muted)。
+  Widget _hint(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
+      child: Text(text,
+          style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark, height: 1.5)),
     );
   }
 
@@ -192,9 +211,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: on ? const Color(0x296BCBDD) : AppColors.surfaceAlt,
+          color: on ? const Color(0x2956D9F0) : AppColors.surfaceAlt,
           border: Border.all(
-              color: on ? const Color(0x666BCBDD) : AppColors.border),
+              color: on ? const Color(0x6656D9F0) : AppColors.border),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(label,
@@ -225,7 +244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _machineRow(Machine m) {
-    String slot(double? v) => v == null ? '−' : v.toStringAsFixed(1);
+    String slot(double? v) => v == null ? '--' : v.toStringAsFixed(1);
     return InkWell(
       onTap: () => _editMachine(m),
       child: Padding(
