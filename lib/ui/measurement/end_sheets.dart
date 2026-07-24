@@ -189,7 +189,7 @@ class MachinePick {
 Future<MachinePick?> showMachinePick(
   BuildContext context, {
   required List<Machine> machines,
-  required Machine sameMachine,
+  required Machine? sameMachine, // null=クイック計測からの移動(同じ機種なし)
   required double ballPrice,
 }) {
   return _showSheet<MachinePick>(
@@ -204,7 +204,7 @@ Future<MachinePick?> showMachinePick(
 
 class _MachinePickSheet extends StatefulWidget {
   final List<Machine> machines;
-  final Machine sameMachine;
+  final Machine? sameMachine;
   final double ballPrice;
   const _MachinePickSheet({
     required this.machines,
@@ -266,8 +266,10 @@ class _MachinePickSheetState extends State<_MachinePickSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          _sameMachineRow(),
-          const SizedBox(height: 8),
+          if (widget.sameMachine != null) ...[
+            _sameMachineRow(widget.sameMachine!),
+            const SizedBox(height: 8),
+          ],
           _registerRow(),
           const SizedBox(height: 8),
           Flexible(
@@ -283,21 +285,21 @@ class _MachinePickSheetState extends State<_MachinePickSheet> {
     );
   }
 
-  Widget _sameMachineRow() {
+  Widget _sameMachineRow(Machine sameMachine) {
     return GestureDetector(
       onTap: () =>
-          Navigator.pop(context, MachinePick.select(widget.sameMachine)),
+          Navigator.pop(context, MachinePick.select(sameMachine)),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0x146BCBDD),
-          border: Border.all(color: const Color(0x736BCBDD)),
+          color: const Color(0x1456D9F0),
+          border: Border.all(color: const Color(0x7356D9F0)),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.sameMachine.name,
+            Text(sameMachine.name,
                 style: AppTheme.sans(size: 13, weight: FontWeight.w500)),
             const SizedBox(height: 2),
             Text('同じ機種 — ワンタップで開始',

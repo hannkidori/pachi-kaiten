@@ -35,9 +35,10 @@ class SessionService {
 
   /// 新しいセッションを開始し、start イベントを追記する。
   ///
+  /// [machine] が null ならクイック計測(機種を選ばず計測)。
   /// [ballPrice] は開始時点のグローバル貸玉設定をコピーして固定する。
   Future<Session> start({
-    required Machine machine,
+    required Machine? machine,
     required double ballPrice,
     required int startCounter,
     int addUnit = 1000,
@@ -45,7 +46,7 @@ class SessionService {
     final now = clock();
     final session = await sessions.insert(Session(
       date: _date(now),
-      machineId: machine.id!,
+      machineId: machine?.id,
       ballPrice: ballPrice,
       addUnit: addUnit,
       state: SessionState.active,
@@ -138,12 +139,12 @@ class SessionService {
 
   /// セッションの現在統計を計算する。
   ///
-  /// ボーダーは機種の該当スロット。未入力の場合は 0(判定・EV は出ない)。
-  Future<RotationStats> stats(Session session, Machine machine) async {
+  /// ボーダーは機種の該当スロット。未入力/クイック計測は 0(判定・EV は出ない)。
+  Future<RotationStats> stats(Session session, Machine? machine) async {
     final list = await entries.bySession(session.id!);
     return computeStats(
       entries: list,
-      border: machine.borderFor(session.ballPrice) ?? 0,
+      border: machine?.borderFor(session.ballPrice) ?? 0,
     );
   }
 
@@ -156,7 +157,7 @@ class SessionService {
   /// 保存した [Trace] を返す(破棄した場合は null)。
   Future<Trace?> endAndLog(
     Session session,
-    Machine machine, {
+    Machine? machine, {
     int? recovery,
   }) async {
     final list = await entries.bySession(session.id!);
@@ -169,13 +170,13 @@ class SessionService {
     await close(session, recovery: recovery);
     final stats = computeStats(
       entries: list,
-      border: machine.borderFor(session.ballPrice) ?? 0,
+      border: machine?.borderFor(session.ballPrice) ?? 0,
     );
 
     final now = clock();
     final trace = Trace(
       date: session.date,
-      machineName: machine.name,
+      machineName: machine?.name, // null=クイック計測
       rotationRate: stats.rotationRate,
       totalRotations: stats.totalRotations,
       evYen: stats.expectedValue?.round(),

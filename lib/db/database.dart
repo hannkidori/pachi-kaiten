@@ -13,7 +13,8 @@ class AppDatabase {
   static const _dbName = 'pachi_kaiten.db';
   // リリース前のためマイグレーション履歴は積まず、スキーマ変更時は作り直す。
   // v0-full が 3 を使っていたため、それより上の値にして旧DBを確実に作り直す。
-  static const _dbVersion = 4;
+  // v5: クイック計測対応で machine_id / machine_name を nullable 化。
+  static const _dbVersion = 5;
 
   Database? _db;
 
@@ -82,7 +83,7 @@ class AppDatabase {
     CREATE TABLE sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
-      machine_id INTEGER NOT NULL,
+      machine_id INTEGER,
       ball_price REAL NOT NULL,
       add_unit INTEGER NOT NULL DEFAULT 1000,
       state TEXT NOT NULL DEFAULT 'active',
@@ -108,7 +109,7 @@ class AppDatabase {
     CREATE TABLE traces (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       date TEXT NOT NULL,
-      machine_name TEXT NOT NULL,
+      machine_name TEXT,
       rotation_rate REAL,
       total_rotations INTEGER NOT NULL,
       ev_yen INTEGER,

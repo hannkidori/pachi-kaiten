@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 
 class _ActiveSummary {
   final Session session;
-  final Machine machine;
+  final Machine? machine; // null=クイック計測
   final String consumedK;
   final int totalSpins;
   final String lastTime;
@@ -48,23 +48,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final session = await s.sessions.active();
     _ActiveSummary? summary;
     if (session != null) {
-      final machine = await s.machines.byId(session.machineId);
+      // machineId が null ならクイック計測。非 null でも機種削除済みなら null。
+      final machine = session.machineId == null
+          ? null
+          : await s.machines.byId(session.machineId!);
       final entries = await s.sessionService.entriesOf(session.id!);
-      if (machine != null) {
-        final stats = computeStats(
-          entries: entries,
-          border: machine.borderFor(session.ballPrice) ?? 0,
-        );
-        final last = entries.isNotEmpty
-            ? DateTime.tryParse(entries.last.createdAt)
-            : null;
-        final hhmm = last == null
-            ? '--:--'
-            : '${last.hour.toString().padLeft(2, '0')}:'
-                '${last.minute.toString().padLeft(2, '0')}';
-        summary = _ActiveSummary(session, machine, fmtK(stats.consumedYen),
-            stats.totalRotations, hhmm);
-      }
+      final stats = computeStats(
+        entries: entries,
+        border: machine?.borderFor(session.ballPrice) ?? 0,
+      );
+      final last = entries.isNotEmpty
+          ? DateTime.tryParse(entries.last.createdAt)
+          : null;
+      final hhmm = last == null
+          ? '--:--'
+          : '${last.hour.toString().padLeft(2, '0')}:'
+              '${last.minute.toString().padLeft(2, '0')}';
+      summary = _ActiveSummary(session, machine, fmtK(stats.consumedYen),
+          stats.totalRotations, hhmm);
     }
     if (!mounted) return;
     setState(() {
@@ -73,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _openMeasurement(Session session, Machine machine,
+  Future<void> _openMeasurement(Session session, Machine? machine,
       {MeasureIntent intent = MeasureIntent.normal}) async {
     final controller = MeasurementController(
       service: s.sessionService,
@@ -212,8 +213,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          Text(a.machine.name,
-              style: AppTheme.sans(size: 14, weight: FontWeight.w500)),
+          Text(a.machine?.name ?? '計測のみ',
+              style: AppTheme.sans(
+                  size: 14,
+                  weight: FontWeight.w500,
+                  color: a.machine == null ? AppColors.muted : AppColors.text)),
           const SizedBox(height: 4),
           Text(
             '消化 ${a.consumedK}分 ・ ${a.totalSpins}回転 ・ 最終入力 ${a.lastTime}',

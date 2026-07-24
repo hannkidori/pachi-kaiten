@@ -147,7 +147,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final st = c.stats;
     final go = await showMoveConfirm(
       context,
-      machineName: c.machine.name,
+      machineName: c.machine?.name ?? '計測のみ',
       investK: fmtK(st.consumedYen),
       totalSpins: st.totalRotations,
     );
@@ -340,12 +340,12 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             children: [
               Expanded(
                 child: Text(
-                  c.hasBorder ? c.machine.name : '計測のみ',
+                  c.isQuick ? '計測のみ' : c.machine!.name,
                   style: AppTheme.sans(
                       size: 14,
                       weight: FontWeight.w500,
                       letterSpacing: 0.02 * 14,
-                      color: c.hasBorder ? AppColors.text : AppColors.muted),
+                      color: c.isQuick ? AppColors.muted : AppColors.text),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

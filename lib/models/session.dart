@@ -6,10 +6,11 @@ enum SessionState { active, closed }
 /// [ballPrice] は開始時点のグローバル貸玉設定(4.0 / 1.0)をコピーして固定する
 /// (後から設定を変えても過去のセッションは変わらない)。ボーダーは機種側の
 /// スロットを参照するため、セッションには持たない。
+/// [machineId] は null=クイック計測(機種を選ばず計測)。
 class Session {
   final int? id;
   final String date; // YYYY-MM-DD(開始日)
-  final int machineId;
+  final int? machineId; // null=クイック計測
   final double ballPrice;
   final int addUnit; // 決定 1 回の投資加算額(1000 / 500)
   final SessionState state;
@@ -20,7 +21,7 @@ class Session {
   const Session({
     this.id,
     required this.date,
-    required this.machineId,
+    this.machineId,
     required this.ballPrice,
     this.addUnit = 1000,
     this.state = SessionState.active,
@@ -73,7 +74,7 @@ class Session {
     return Session(
       id: map['id'] as int?,
       date: map['date'] as String,
-      machineId: (map['machine_id'] as num).toInt(),
+      machineId: (map['machine_id'] as num?)?.toInt(),
       ballPrice: (map['ball_price'] as num).toDouble(),
       addUnit: (map['add_unit'] as num).toInt(),
       state: (map['state'] as String) == 'closed'

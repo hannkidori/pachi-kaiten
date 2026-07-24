@@ -138,8 +138,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t.machineName,
-                      style: AppTheme.sans(size: 13, weight: FontWeight.w500),
+                  Text(t.machineName ?? '計測のみ',
+                      style: AppTheme.sans(
+                          size: 13,
+                          weight: FontWeight.w500,
+                          color: t.machineName == null
+                              ? AppColors.muted
+                              : AppColors.text),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
@@ -153,10 +158,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           text: '・${t.totalRotations}回転',
                           style:
                               AppTheme.mono(size: 12, color: AppColors.muted)),
-                      TextSpan(
-                          text:
-                              '・EV${t.evYen == null ? '--' : fmtSignedNum(t.evYen!)}',
-                          style: AppTheme.mono(size: 12, color: evColor)),
+                      // クイック計測(機種なし)の足跡は EV を表示しない。
+                      if (t.machineName != null)
+                        TextSpan(
+                            text:
+                                '・EV${t.evYen == null ? '--' : fmtSignedNum(t.evYen!)}',
+                            style: AppTheme.mono(size: 12, color: evColor)),
                       if (t.plYen != null)
                         TextSpan(
                           text: '・${fmtSignedNum(t.plYen!)}円',

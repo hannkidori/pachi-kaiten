@@ -26,7 +26,7 @@ enum CommitFeedback { none, commit, rebase }
 class MeasurementController extends ChangeNotifier {
   final SessionService service;
   Session session;
-  final Machine machine;
+  final Machine? machine; // null=クイック計測(機種を選ばず計測)
 
   List<Entry> _entries = const [];
   String _typed = '';
@@ -60,8 +60,11 @@ class MeasurementController extends ChangeNotifier {
   bool get isError => _error;
   ConfirmPrompt? get confirm => _confirm;
 
-  /// ボーダーがあるか(クイック計測は false)。
-  bool get hasBorder => (machine.borderFor(session.ballPrice) ?? 0) > 0;
+  /// ボーダーがあるか(クイック計測・未登録スロットは false)。
+  bool get hasBorder => (machine?.borderFor(session.ballPrice) ?? 0) > 0;
+
+  /// クイック計測(機種を選ばず計測)か。
+  bool get isQuick => machine == null;
 
   /// コミットのたびに増えるシーケンス。画面はこの変化でハプティクス/演出を発火する。
   int get feedbackTick => _feedbackTick;
@@ -81,7 +84,7 @@ class MeasurementController extends ChangeNotifier {
 
   RotationStats get stats => computeStats(
         entries: _entries,
-        border: machine.borderFor(session.ballPrice) ?? 0,
+        border: machine?.borderFor(session.ballPrice) ?? 0,
       );
 
   /// DB からイベントを読み込む。

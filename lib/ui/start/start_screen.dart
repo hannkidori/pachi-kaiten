@@ -4,13 +4,15 @@ import '../../models/machine.dart';
 import '../../models/session.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/dashed_border.dart';
 import '../widgets/numpad.dart';
 import 'machine_sheets.dart';
 
 /// 計測開始の結果。呼び出し側(ホーム)がこれを受けて計測画面を開く。
+/// [machine] が null ならクイック計測(機種を選ばず計測)。
 class StartResult {
   final Session session;
-  final Machine machine;
+  final Machine? machine;
   const StartResult(this.session, this.machine);
 }
 
@@ -52,6 +54,7 @@ class _StartScreenState extends State<StartScreen> {
   List<Machine> _machines = [];
   List<int> _recentIds = [];
   Machine? _machine;
+  bool _quick = false; // 「機種を選ばず計測」を選択中(クイック計測)
   String _query = '';
   String _counter = '';
   int _addUnit = 1000;
@@ -87,7 +90,7 @@ class _StartScreenState extends State<StartScreen> {
   List<Machine> get _visibleMachines =>
       orderMachines(all: _machines, recentIds: _recentIds, query: _query);
 
-  bool get _canStart => _machine != null && !_starting;
+  bool get _canStart => (_quick || _machine != null) && !_starting;
 
   String _stamp() => DateTime.now().toIso8601String();
 
@@ -116,18 +119,22 @@ class _StartScreenState extends State<StartScreen> {
 
   Future<void> _start() async {
     if (!_canStart) return;
-    var machine = _machine!;
-    // 現在の貸玉スロットが未入力なら、その場で入力を求めて保存(育つマスタ)。
-    if (machine.borderFor(_ballPrice) == null) {
-      final entered = await showBorderPrompt(
-        context,
-        machineName: machine.name,
-        ballPrice: _ballPrice,
-        current: null,
-      );
-      if (entered == null) return;
-      machine = applyBorder(machine, _ballPrice, entered, _stamp());
-      await s.machines.update(machine);
+    // クイック計測: 機種なしで即開始(ボーダー由来の表示は計測画面側で非表示)。
+    Machine? machine;
+    if (!_quick) {
+      machine = _machine!;
+      // 現在の貸玉スロットが未入力なら、その場で入力を求めて保存(育つマスタ)。
+      if (machine.borderFor(_ballPrice) == null) {
+        final entered = await showBorderPrompt(
+          context,
+          machineName: machine.name,
+          ballPrice: _ballPrice,
+          current: null,
+        );
+        if (entered == null) return;
+        machine = applyBorder(machine, _ballPrice, entered, _stamp());
+        await s.machines.update(machine);
+      }
     }
     setState(() => _starting = true);
     final counter = int.tryParse(_counter) ?? 0;
@@ -154,6 +161,9 @@ class _StartScreenState extends State<StartScreen> {
                   _topBar(),
                   _searchField(),
                   _registerRow(),
+                  const SizedBox(height: 8),
+                  _quickRow(),
+                  const SizedBox(height: 8),
                   Expanded(child: _machineList()),
                   _counterSection(),
                   _startButton(),
@@ -172,8 +182,8 @@ class _StartScreenState extends State<StartScreen> {
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back, color: AppColors.textDim),
           ),
-          Text('計測を開始',
-              style: AppTheme.sans(size: 17, weight: FontWeight.w700)),
+          Text('計測開始',
+              style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
           const Spacer(),
           // 貸玉はグローバル設定。ここでは適用スロットの目安として読み取り専用表示。
           Container(
@@ -183,7 +193,7 @@ class _StartScreenState extends State<StartScreen> {
               border: Border.all(color: AppColors.border),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text('貸玉 ${ballLabel(_ballPrice)}',
+            child: Text(ballLabel(_ballPrice),
                 style: AppTheme.mono(size: 11, color: AppColors.textDim)),
           ),
         ],
@@ -203,7 +213,7 @@ class _StartScreenState extends State<StartScreen> {
           isDense: true,
           prefixIcon:
               const Icon(Icons.search, size: 18, color: AppColors.muted),
-          hintText: '機種名を検索…',
+          hintText: '機種名で検索',
           hintStyle: AppTheme.sans(size: 13, color: AppColors.mutedDark),
           filled: true,
           fillColor: AppColors.surfaceAlt,
@@ -213,7 +223,7 @@ class _StartScreenState extends State<StartScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: Color(0x596BCBDD)),
+            borderSide: const BorderSide(color: Color(0x5956D9F0)),
           ),
         ),
       ),
@@ -221,25 +231,73 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Widget _registerRow() {
+    // 検索ヒット0件のときは検索文字列を登録名に引き継ぐ。
+    final q = _query.trim();
+    final noHit = q.isNotEmpty && _visibleMachines.isEmpty;
+    final label = noHit ? '「$q」で登録' : '新しい機種を登録';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
       child: GestureDetector(
         onTap: _register,
+        behavior: HitTestBehavior.opaque,
+        child: DashedBorderBox(
+          color: const Color(0x8C56D9F0),
+          radius: 10,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: [
+                const Icon(Icons.add, size: 17, color: AppColors.accent),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTheme.sans(
+                          size: 13,
+                          weight: FontWeight.w600,
+                          color: AppColors.accentSoft)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 「機種を選ばず計測」= クイック計測。リストとは別枠のニュートラル枠。
+  Widget _quickRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: GestureDetector(
+        onTap: () => setState(() {
+          _quick = true;
+          _machine = null;
+        }),
+        behavior: HitTestBehavior.opaque,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0x396BCBDD)),
+            color: _quick ? const Color(0x14FFFFFF) : Colors.transparent,
+            border: Border.all(
+                color: _quick ? const Color(0x40FFFFFF) : AppColors.border),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
-              const Icon(Icons.add, size: 17, color: AppColors.accent),
+              Icon(Icons.speed,
+                  size: 16,
+                  color: _quick ? AppColors.text : AppColors.muted),
               const SizedBox(width: 8),
-              Text('新しい機種を登録',
+              Text('機種を選ばず計測',
                   style: AppTheme.sans(
                       size: 13,
-                      weight: FontWeight.w600,
-                      color: AppColors.accentSoft)),
+                      weight: FontWeight.w500,
+                      color: _quick ? AppColors.text : AppColors.textDim)),
+              const Spacer(),
+              Text('ボーダー判定なし',
+                  style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
             ],
           ),
         ),
@@ -250,9 +308,12 @@ class _StartScreenState extends State<StartScreen> {
   Widget _machineList() {
     final list = _visibleMachines;
     if (list.isEmpty) {
+      final zeroMachines = _machines.isEmpty;
       return Center(
         child: Text(
-          _query.trim().isEmpty ? '機種を登録してください' : '該当する機種がありません',
+          zeroMachines
+              ? '打つ台を登録して始めましょう'
+              : (_query.trim().isEmpty ? '機種がありません' : '該当する機種がありません'),
           style: AppTheme.sans(size: 12, color: AppColors.mutedDark),
         ),
       );
@@ -288,17 +349,29 @@ class _StartScreenState extends State<StartScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
-        onTap: () => setState(() => _machine = m),
+        onTap: () => setState(() {
+          _machine = m;
+          _quick = false;
+        }),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
-            color: selected ? const Color(0x146BCBDD) : Colors.transparent,
+            color: selected ? const Color(0x1456D9F0) : Colors.transparent,
             border: Border.all(
-                color: selected ? const Color(0x736BCBDD) : AppColors.border),
+                color: selected ? const Color(0x7356D9F0) : AppColors.border),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
+              if (selected) ...[
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                      color: AppColors.accent, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: Text(m.name,
                     style: AppTheme.sans(size: 13),
@@ -315,8 +388,8 @@ class _StartScreenState extends State<StartScreen> {
                     children: [
                       Text(
                         border == null
-                            ? '未設定'
-                            : 'B${border.toStringAsFixed(1)}',
+                            ? 'B --'
+                            : 'B ${border.toStringAsFixed(1)}',
                         style: AppTheme.mono(
                             size: 11,
                             color: border == null
@@ -328,9 +401,13 @@ class _StartScreenState extends State<StartScreen> {
                     ],
                   ),
                 )
-              else if (border != null)
-                Text('B${border.toStringAsFixed(1)}',
-                    style: AppTheme.mono(size: 11, color: AppColors.muted)),
+              else
+                Text(border == null ? 'B --' : 'B ${border.toStringAsFixed(1)}',
+                    style: AppTheme.mono(
+                        size: 11,
+                        color: border == null
+                            ? AppColors.faint
+                            : AppColors.muted)),
             ],
           ),
         ),
@@ -345,22 +422,27 @@ class _StartScreenState extends State<StartScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text('台の上の回転数をそのまま入力',
+              style: AppTheme.sans(size: 9.5, color: AppColors.muted)),
+          const SizedBox(height: 6),
           Container(
-            height: 50,
+            height: 58,
             padding: const EdgeInsets.symmetric(horizontal: 14),
+            alignment: Alignment.centerRight,
             decoration: BoxDecoration(
               color: AppColors.surfaceAlt,
-              border: Border.all(color: const Color(0x596BCBDD)),
+              border: Border.all(color: const Color(0x5956D9F0)),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              children: [
-                Text('打ち始めカウンタ',
-                    style: AppTheme.sans(size: 10, color: AppColors.muted)),
-                const Spacer(),
-                Text(_counter.isEmpty ? '0' : _counter,
-                    style: AppTheme.mono(size: 22, weight: FontWeight.w500)),
-              ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                _counter.isEmpty ? '打ち始めの回転数' : _counter,
+                style: _counter.isEmpty
+                    ? AppTheme.sans(size: 15, color: AppColors.faint)
+                    : AppTheme.mono(size: 40, weight: FontWeight.w700),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -374,6 +456,9 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Widget _startButton() {
+    final label = _canStart
+        ? '計測スタート'
+        : '機種を選ぶか「機種を選ばず計測」';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
       child: Opacity(
@@ -384,11 +469,12 @@ class _StartScreenState extends State<StartScreen> {
             height: 56,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.accentDeep,
+              gradient: _canStart ? AppColors.accentGradient : null,
+              color: _canStart ? null : AppColors.accentDeep,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              _machine == null ? '機種を選択してください' : '計測開始',
+              label,
               style: AppTheme.sans(
                   size: 16,
                   weight: FontWeight.w700,

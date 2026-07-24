@@ -63,6 +63,22 @@ void main() {
       expect((await traceRepo.allDesc()).single.plYen, isNull);
     });
 
+    test('クイック計測(機種なし): 足跡は machineName=null・EV=null で保存', () async {
+      // 機種を選ばず計測 → machineId null・ボーダーなし。
+      final s = await service.start(
+          machine: null, ballPrice: 4.0, startCounter: 0);
+      expect(s.machineId, isNull);
+      await service.recordCount(s, counter: 20);
+      await service.recordCount(s, counter: 41);
+
+      final trace = await service.endAndLog(s, null, recovery: 3000);
+      expect(trace, isNotNull);
+      expect(trace!.machineName, isNull); // クイックは機種名なし
+      expect(trace.rotationRate, closeTo(20.5, 1e-9)); // 回転率は出る
+      expect(trace.evYen, isNull); // ボーダーなし=EVなし
+      expect(trace.plYen, 3000 - 2000); // 回収-消化 は出る
+    });
+
     test('count 0件のセッションは足跡を残さず破棄される', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       // count を 1 件も打たずに終了。
