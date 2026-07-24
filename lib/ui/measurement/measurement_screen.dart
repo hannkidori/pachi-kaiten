@@ -176,7 +176,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final result = await showRecoverySheet(
       context,
       forMove: false,
-      machineName: c.machine?.name ?? '計測のみ',
+      machineName: c.machine?.name ?? '計測',
       rateStr: fmtRate(st.rotationRate),
       totalSpins: st.totalRotations,
     );
@@ -196,7 +196,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final st = c.stats;
     final go = await showMoveConfirm(
       context,
-      machineName: c.machine?.name ?? '計測のみ',
+      machineName: c.machine?.name ?? '計測',
       investK: fmtK(st.consumedYen),
       totalSpins: st.totalRotations,
     );
@@ -204,7 +204,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final result = await showRecoverySheet(
       context,
       forMove: true,
-      machineName: c.machine?.name ?? '計測のみ',
+      machineName: c.machine?.name ?? '計測',
       rateStr: fmtRate(st.rotationRate),
       totalSpins: st.totalRotations,
     );
@@ -465,7 +465,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             children: [
               Expanded(
                 child: Text(
-                  c.isQuick ? '計測のみ' : c.machine!.name,
+                  c.isQuick ? '計測' : c.machine!.name,
                   style: AppTheme.sans(
                       size: 14,
                       weight: FontWeight.w500,

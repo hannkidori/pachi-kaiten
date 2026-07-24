@@ -210,7 +210,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     style: AppTheme.mono(size: 13, color: AppColors.muted)),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(t.machineName ?? '計測のみ',
+                  child: Text(t.machineName ?? '計測',
                       style: AppTheme.sans(
                           size: 13,
                           weight: FontWeight.w500,

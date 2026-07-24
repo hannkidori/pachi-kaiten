@@ -13,6 +13,7 @@ import '../../util/format.dart';
 import '../history/history_screen.dart';
 import '../measurement/measurement_screen.dart';
 import '../settings/settings_screen.dart';
+import '../start/quick_start_screen.dart';
 import '../start/start_screen.dart';
 
 /// ホーム。計測開始までの通過点。計測中セッションがあれば復帰カードを最優先表示し、
@@ -118,7 +119,18 @@ class _HomeScreenState extends State<HomeScreen> {
     _refresh();
   }
 
-  Future<void> _startNew() async {
+  /// 主役: 機種選択を経由せず直接カウンタ入力へ(クイック計測)。
+  Future<void> _startQuick() async {
+    final result = await Navigator.of(context).push<StartResult>(
+      MaterialPageRoute(builder: (_) => QuickStartScreen(services: s)),
+    );
+    if (result != null) {
+      await _openMeasurement(result.session, result.machine);
+    }
+  }
+
+  /// 従: 機種を選んで計測(ボーダー比較・期待値が要るとき)。
+  Future<void> _startWithMachine() async {
     final result = await Navigator.of(context).push<StartResult>(
       MaterialPageRoute(builder: (_) => StartScreen(services: s)),
     );
@@ -179,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? _restoreCard(_active!)
                           : _heroAndStart(),
                     ),
-                    _settingsLink(),
+                    _bottomLinks(),
                     const SizedBox(height: 8),
                   ],
                 ),
@@ -204,19 +216,55 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------- 前回比ヒーロー + 円形スタート ----------
+  // ---------- 前回比ヒーロー + 従ボタン + 主役の円形スタート ----------
   Widget _heroAndStart() {
     return Column(
       children: [
         Expanded(child: Center(child: _hero())),
+        // 従: 機種を選んで計測(ゴーストボタン + 1行説明)。
+        _secondaryButton(),
+        const SizedBox(height: 6),
+        Text('機種を選ぶと、ボーダーとの比較・期待値が出ます',
+            textAlign: TextAlign.center,
+            style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
+        const SizedBox(height: 20),
+        // 主役: 機種選択を経由せず直接カウンタ入力へ。
         _circleButton(
           label: '計測スタート',
           sub: 'START',
           size: 218,
-          onTap: _startNew,
+          onTap: _startQuick,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
       ],
+    );
+  }
+
+  Widget _secondaryButton() {
+    return GestureDetector(
+      onTap: _startWithMachine,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 48,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.grid_view_rounded,
+                size: 15, color: AppColors.muted),
+            const SizedBox(width: 8),
+            Text('機種を選んで計測',
+                style: AppTheme.sans(
+                    size: 13.5,
+                    weight: FontWeight.w600,
+                    color: AppColors.textStrong)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -240,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('計測を終えると、ここに足跡が残ります',
                 style: AppTheme.sans(size: 12, color: AppColors.mutedDark)),
           ] else ...[
-            Text(t.machineName ?? '計測のみ',
+            Text(t.machineName ?? '計測',
                 style: AppTheme.sans(
                     size: 14,
                     color: t.machineName == null
@@ -310,7 +358,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Text(a.machine?.name ?? '計測のみ',
+                  Text(a.machine?.name ?? '計測',
                       style: AppTheme.sans(
                           size: 21,
                           weight: FontWeight.w600,
@@ -328,6 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 22),
                   _circleButton(
                     label: '再開',
+                    sub: 'RESUME',
                     size: 164,
                     onTap: () => _openMeasurement(a.session, a.machine),
                   ),
@@ -348,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Text(
-              _discardArmed ? 'もう一度タップで破棄' : '破棄',
+              _discardArmed ? 'もう一度タップで破棄' : 'このセッションを破棄',
               textAlign: TextAlign.center,
               style: AppTheme.sans(
                   size: 12.5,
@@ -437,15 +486,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _settingsLink() {
+  /// 最下部の 2 リンク(足跡 | 設定)。控えめだが 44px 以上で確実に押せる。
+  Widget _bottomLinks() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _bottomLink(Icons.history, '足跡', _openHistory),
+        Container(
+          width: 1,
+          height: 14,
+          color: AppColors.border,
+        ),
+        _bottomLink(Icons.settings_outlined, '設定', _openSettings),
+      ],
+    );
+  }
+
+  Widget _bottomLink(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
-      onTap: _openSettings,
+      onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text('設定',
-            textAlign: TextAlign.center,
-            style: AppTheme.sans(size: 12, color: AppColors.faint)),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.muted),
+            const SizedBox(width: 6),
+            Text(label,
+                style: AppTheme.sans(size: 12, color: AppColors.muted)),
+          ],
+        ),
       ),
     );
   }

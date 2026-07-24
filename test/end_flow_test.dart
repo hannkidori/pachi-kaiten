@@ -78,7 +78,14 @@ void main() {
       expect(trace!.machineName, isNull); // クイックは機種名なし
       expect(trace.rotationRate, closeTo(20.5, 1e-9)); // 回転率は出る
       expect(trace.evYen, isNull); // ボーダーなし=EVなし
+      expect(trace.borderDiff, isNull); // ボーダー差分も出ない
       expect(trace.plYen, 3000 - 2000); // 回収-消化 は出る
+
+      // 足跡(時系列)に 1 件だけ残り、EV は null のまま。
+      final all = await traceRepo.allDesc();
+      expect(all.length, 1);
+      expect(all.single.machineName, isNull);
+      expect(all.single.evYen, isNull);
     });
 
     test('count 0件のセッションは足跡を残さず破棄される', () async {

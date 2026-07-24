@@ -55,7 +55,6 @@ class _StartScreenState extends State<StartScreen> {
   List<Machine> _machines = [];
   List<int> _recentIds = [];
   Machine? _machine;
-  bool _quick = false; // 「機種を選ばず計測」を選択中(クイック計測)
   String _query = '';
   String _counter = '';
   int _addUnit = 1000;
@@ -91,7 +90,7 @@ class _StartScreenState extends State<StartScreen> {
   List<Machine> get _visibleMachines =>
       orderMachines(all: _machines, recentIds: _recentIds, query: _query);
 
-  bool get _canStart => (_quick || _machine != null) && !_starting;
+  bool get _canStart => _machine != null && !_starting;
 
   String _stamp() => DateTime.now().toIso8601String();
 
@@ -120,22 +119,18 @@ class _StartScreenState extends State<StartScreen> {
 
   Future<void> _start() async {
     if (!_canStart) return;
-    // クイック計測: 機種なしで即開始(ボーダー由来の表示は計測画面側で非表示)。
-    Machine? machine;
-    if (!_quick) {
-      machine = _machine!;
-      // 現在の貸玉スロットが未入力なら、その場で入力を求めて保存(育つマスタ)。
-      if (machine.borderFor(_ballPrice) == null) {
-        final entered = await showBorderPrompt(
-          context,
-          machineName: machine.name,
-          ballPrice: _ballPrice,
-          current: null,
-        );
-        if (entered == null) return;
-        machine = applyBorder(machine, _ballPrice, entered, _stamp());
-        await s.machines.update(machine);
-      }
+    var machine = _machine!;
+    // 現在の貸玉スロットが未入力なら、その場で入力を求めて保存(育つマスタ)。
+    if (machine.borderFor(_ballPrice) == null) {
+      final entered = await showBorderPrompt(
+        context,
+        machineName: machine.name,
+        ballPrice: _ballPrice,
+        current: null,
+      );
+      if (entered == null) return;
+      machine = applyBorder(machine, _ballPrice, entered, _stamp());
+      await s.machines.update(machine);
     }
     setState(() => _starting = true);
     final counter = int.tryParse(_counter) ?? 0;
@@ -162,8 +157,6 @@ class _StartScreenState extends State<StartScreen> {
                   _topBar(),
                   _searchField(),
                   _registerRow(),
-                  const SizedBox(height: 8),
-                  _quickRow(),
                   const SizedBox(height: 8),
                   Expanded(child: _machineList()),
                   _counterSection(),
@@ -267,45 +260,6 @@ class _StartScreenState extends State<StartScreen> {
     );
   }
 
-  /// 「機種を選ばず計測」= クイック計測。リストとは別枠のニュートラル枠。
-  Widget _quickRow() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: GestureDetector(
-        onTap: () => setState(() {
-          _quick = true;
-          _machine = null;
-        }),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: _quick ? const Color(0x14FFFFFF) : Colors.transparent,
-            border: Border.all(
-                color: _quick ? const Color(0x40FFFFFF) : AppColors.border),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.speed,
-                  size: 16,
-                  color: _quick ? AppColors.text : AppColors.muted),
-              const SizedBox(width: 8),
-              Text('機種を選ばず計測',
-                  style: AppTheme.sans(
-                      size: 13,
-                      weight: FontWeight.w500,
-                      color: _quick ? AppColors.text : AppColors.textDim)),
-              const Spacer(),
-              Text('ボーダー判定なし',
-                  style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _machineList() {
     final list = _visibleMachines;
     if (list.isEmpty) {
@@ -350,10 +304,7 @@ class _StartScreenState extends State<StartScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
-        onTap: () => setState(() {
-          _machine = m;
-          _quick = false;
-        }),
+        onTap: () => setState(() => _machine = m),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
@@ -444,7 +395,7 @@ class _StartScreenState extends State<StartScreen> {
   Widget _startButton() {
     final label = _canStart
         ? '計測スタート'
-        : '機種を選ぶか「機種を選ばず計測」';
+        : '機種を選択してください';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
       child: Opacity(
