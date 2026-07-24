@@ -55,7 +55,6 @@ class SessionService {
       sessionId: session.id!,
       type: EntryType.start,
       counter: startCounter,
-      mode: EntryMode.cash,
       createdAt: _iso(now),
     ));
     return session;
@@ -63,24 +62,18 @@ class SessionService {
 
   /// 決定タップ。追記後の Entry を返す(即時書き込み)。
   ///
-  /// - cash: [investAdded](円)を渡す。未指定なら [Session.addUnit]。
-  /// - ball: [ballsAdded](玉)を渡す。持ち玉消費として計測に算入される。
+  /// [yen] はこの決定で消化した金額(円 = 加算単位)。未指定なら [Session.addUnit]。
   Future<Entry> recordCount(
     Session session, {
     required int counter,
-    required EntryMode mode,
-    int? investAdded,
-    int ballsAdded = 0,
+    int? yen,
   }) async {
     final now = clock();
     final entry = Entry(
       sessionId: session.id!,
       type: EntryType.count,
       counter: counter,
-      mode: mode,
-      investAdded:
-          mode == EntryMode.cash ? (investAdded ?? session.addUnit) : 0,
-      ballsAdded: mode == EntryMode.ball ? ballsAdded : 0,
+      yen: yen ?? session.addUnit,
       createdAt: _iso(now),
     );
     final id = await entries.insert(entry);
@@ -89,21 +82,18 @@ class SessionService {
       sessionId: entry.sessionId,
       type: entry.type,
       counter: entry.counter,
-      mode: entry.mode,
-      investAdded: entry.investAdded,
-      ballsAdded: entry.ballsAdded,
+      yen: entry.yen,
       createdAt: entry.createdAt,
     );
   }
 
-  /// 大当り復帰。差分計算の起点を付け替える。以降のモードは持ち玉になる。
+  /// 大当り復帰。差分計算の起点を付け替える(通常状態へ戻る)。
   Future<Entry> recordRebase(Session session, {required int counter}) async {
     final now = clock();
     final entry = Entry(
       sessionId: session.id!,
       type: EntryType.rebase,
       counter: counter,
-      mode: EntryMode.ball,
       createdAt: _iso(now),
     );
     final id = await entries.insert(entry);
@@ -112,8 +102,7 @@ class SessionService {
       sessionId: entry.sessionId,
       type: entry.type,
       counter: entry.counter,
-      mode: entry.mode,
-      investAdded: entry.investAdded,
+      yen: entry.yen,
       createdAt: entry.createdAt,
     );
   }
@@ -121,15 +110,6 @@ class SessionService {
   /// 1 つ戻す。直前の count 1 件のみ削除(start / rebase は戻せない)。
   Future<bool> undoLastCount(int sessionId) {
     return entries.deleteLastIfCount(sessionId);
-  }
-
-  /// 現在のモード。rebase 以降は ball、それ以外は最後の count のモード。
-  /// イベントが無ければ cash。
-  Future<EntryMode> currentMode(int sessionId) async {
-    final last = await entries.last(sessionId);
-    if (last == null) return EntryMode.cash;
-    if (last.type == EntryType.rebase) return EntryMode.ball;
-    return last.mode;
   }
 
   /// 差分計算の起点となる直近カウンタ(次の入力補助・初回判定に使う)。
@@ -164,7 +144,6 @@ class SessionService {
     return computeStats(
       entries: list,
       border: machine.borderFor(session.ballPrice) ?? 0,
-      ballPrice: session.ballPrice,
     );
   }
 
@@ -172,7 +151,7 @@ class SessionService {
   ///
   /// - count イベントが 1 件も無い(極端に短い)セッションは足跡を残さず破棄する。
   /// - それ以外は close して計測データから足跡を 1 行自動保存する。
-  ///   回収額 [recovery] を渡せば P/L(回収 − 現金投資)も記録、null ならスキップ扱い。
+  ///   回収額 [recovery] を渡せば P/L(回収 − 消化額)も記録、null ならスキップ扱い。
   ///
   /// 保存した [Trace] を返す(破棄した場合は null)。
   Future<Trace?> endAndLog(
@@ -191,7 +170,6 @@ class SessionService {
     final stats = computeStats(
       entries: list,
       border: machine.borderFor(session.ballPrice) ?? 0,
-      ballPrice: session.ballPrice,
     );
 
     final now = clock();
@@ -201,9 +179,9 @@ class SessionService {
       rotationRate: stats.rotationRate,
       totalRotations: stats.totalRotations,
       evYen: stats.expectedValue?.round(),
-      investYen: stats.cashInvest,
+      consumedYen: stats.consumedYen,
       bonusCount: stats.bonusCount,
-      plYen: recovery == null ? null : recovery - stats.cashInvest,
+      plYen: recovery == null ? null : recovery - stats.consumedYen,
       createdAt: _iso(now),
     );
     final id = await traces.insert(trace);
@@ -214,7 +192,7 @@ class SessionService {
       rotationRate: trace.rotationRate,
       totalRotations: trace.totalRotations,
       evYen: trace.evYen,
-      investYen: trace.investYen,
+      consumedYen: trace.consumedYen,
       bonusCount: trace.bonusCount,
       plYen: trace.plYen,
       createdAt: trace.createdAt,

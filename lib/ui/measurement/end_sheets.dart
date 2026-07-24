@@ -57,7 +57,7 @@ Future<bool?> showMoveConfirm(
               style:
                   AppTheme.sans(size: 12, color: AppColors.muted, height: 1.7)),
           const SizedBox(height: 6),
-          Text('$machineName ・ 投資 $investK ・ $totalSpins回転',
+          Text('$machineName ・ 消化 $investK分 ・ $totalSpins回転',
               style: AppTheme.mono(size: 12, color: AppColors.textStrong)),
           const SizedBox(height: 16),
           Row(

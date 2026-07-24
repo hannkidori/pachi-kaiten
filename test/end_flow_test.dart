@@ -33,8 +33,8 @@ void main() {
   group('endAndLog — 足跡の自動保存', () {
     test('終了(回収入力あり): 足跡が1件保存され P/L を含む', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
-      await service.recordCount(s, counter: 20, mode: EntryMode.cash);
-      await service.recordCount(s, counter: 40, mode: EntryMode.cash); // 投資2000
+      await service.recordCount(s, counter: 20);
+      await service.recordCount(s, counter: 40); // 消化2000
 
       final trace = await service.endAndLog(s, _a, recovery: 5000);
       expect(trace, isNotNull);
@@ -43,9 +43,9 @@ void main() {
       expect(all.length, 1);
       final t = all.single;
       expect(t.machineName, 'P大海物語5');
-      expect(t.investYen, 2000);
+      expect(t.consumedYen, 2000);
       expect(t.totalRotations, 40);
-      expect(t.plYen, 3000); // 回収5000 - 投資2000
+      expect(t.plYen, 3000); // 回収5000 - 消化2000
       expect(t.rotationRate, closeTo(20.0, 1e-9));
 
       // セッションは closed に、active は無くなる。
@@ -55,7 +55,7 @@ void main() {
 
     test('終了(回収スキップ): P/L は null', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
-      await service.recordCount(s, counter: 30, mode: EntryMode.cash);
+      await service.recordCount(s, counter: 30);
 
       final trace = await service.endAndLog(s, _a); // recovery 省略=スキップ
       expect(trace, isNotNull);
@@ -77,12 +77,12 @@ void main() {
 
   test('台移動: endAndLog(旧) → start(新) が途切れなく繋がる', () async {
     final s1 = await service.start(machine: _a, ballPrice: 4.0, startCounter: 100);
-    await service.recordCount(s1, counter: 118, mode: EntryMode.cash);
+    await service.recordCount(s1, counter: 118);
 
     // 旧セッションを足跡に記録して終了。
     final trace = await service.endAndLog(s1, _a, recovery: 0);
     expect(trace, isNotNull);
-    expect(trace!.plYen, 0 - 1000); // 回収0 - 投資1000
+    expect(trace!.plYen, 0 - 1000); // 回収0 - 消化1000
 
     // 同じ貸玉で新機種のセッションを開始。
     final s2 = await service.start(

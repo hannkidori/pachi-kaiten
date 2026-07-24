@@ -9,7 +9,7 @@ class BackupService {
   BackupService(this.db);
 
   static const _tables = ['machines', 'traces'];
-  static const schemaVersion = 3;
+  static const schemaVersion = 4;
 
   /// machines + traces を 1 つの Map にエクスポートする。
   Future<Map<String, Object?>> exportData({String? exportedAt}) async {

@@ -63,7 +63,7 @@ void main() {
     test('discard はセッションとイベントを物理削除する', () async {
       final session =
           await service.start(machine: machine, ballPrice: 4.0, startCounter: 0);
-      await service.recordCount(session, counter: 20, mode: EntryMode.cash);
+      await service.recordCount(session, counter: 20);
 
       await service.discard(session.id!);
 
@@ -91,15 +91,14 @@ void main() {
       expect(entries.single.type, EntryType.start);
       expect(entries.single.counter, 26143);
 
-      // 復帰カードに出る値: 投資 0.0k / 0回転
+      // 復帰カードに出る値: 消化 0.0k / 0回転
       final stats = computeStats(
         entries: entries,
         border: machine.borderFor(active.ballPrice) ?? 0,
-        ballPrice: active.ballPrice,
       );
-      expect(stats.cashInvest, 0);
+      expect(stats.consumedYen, 0);
       expect(stats.totalRotations, 0);
-      expect(fmtK(stats.cashInvest), '0.0k');
+      expect(fmtK(stats.consumedYen), '0.0k');
     });
   });
 }

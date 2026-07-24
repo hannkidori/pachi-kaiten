@@ -1,25 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../logic/rotation_calc.dart';
-import '../../models/entry.dart';
 import '../../theme/app_theme.dart';
 
-// グラフの色ルール(確定済み区間はボーダー判定色に統一)。
-// シアンのハイライト(AppColors.accent)は「入力中(未確定)の区間」専用であり、
-// 決定で確定した棒には使わない。判定ルール(以上=ティール/未満=赤)は現金・
-// 持ち玉で共通。持ち玉の棒は現金と区別するため淡色にする。
-const Color chartBarAbove = Color(0x666BCBDD); // 現金・ボーダー以上(ティール)
-const Color chartBarBelow = Color(0x52F06A5D); // 現金・ボーダー未満(赤)
-const Color chartBarAboveBall = Color(0x2E6BCBDD); // 持ち玉・以上(淡ティール)
-const Color chartBarBelowBall = Color(0x28F06A5D); // 持ち玉・未満(淡赤)
+// グラフの色ルール(確定済み区間はボーダー判定色)。
+// 判定ルール: ボーダー以上=ティール / 未満=赤。
+const Color chartBarAbove = Color(0x666BCBDD); // ボーダー以上(ティール)
+const Color chartBarBelow = Color(0x52F06A5D); // ボーダー未満(赤)
 const Color chartLabelAbove = Color(0xFF5A7A82);
 const Color chartLabelBelow = AppColors.downDim;
 
-/// 確定済み区間の棒色。判定ルールは共通、[ball] なら淡色。
-Color chartBarColor(double ratePer1000, double border, {bool ball = false}) {
-  final below = ratePer1000 < border;
-  if (ball) return below ? chartBarBelowBall : chartBarAboveBall;
-  return below ? chartBarBelow : chartBarAbove;
+/// 確定済み区間の棒色。ボーダー以上=ティール / 未満=赤。
+Color chartBarColor(double ratePer1000, double border) {
+  return ratePer1000 < border ? chartBarBelow : chartBarAbove;
 }
 
 /// 確定済み区間の数値ラベル色(現金・持ち玉共通)。
@@ -50,10 +43,10 @@ class RotationChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 計測対象の区間(現金 + 消費玉>0 の持ち玉)を棒にする。計測外は描かない。
-    final segs = stats.segments.where((s) => s.measured).toList();
+    // 各 count 区間を棒にする。
+    final segs = stats.segments;
     final border = stats.border;
-    final barVals = segs.map((s) => s.ratePer1000 ?? 0).toList();
+    final barVals = segs.map((s) => s.ratePer1000).toList();
     final maxV = [border + 3, 1.0, ...barVals].reduce((a, b) => a > b ? a : b);
     final linePct = (border / maxV).clamp(0.0, 0.96);
 
@@ -185,7 +178,7 @@ class _Bars extends StatelessWidget {
         }
       }
       if (p < segs.length) {
-        add(_bar(barVals[p], segs[p].mode == EntryMode.ball), _label(p));
+        add(_bar(barVals[p]), _label(p));
       }
     }
 
@@ -209,13 +202,13 @@ class _Bars extends StatelessWidget {
     );
   }
 
-  Widget _bar(double val, bool ball) {
+  Widget _bar(double val) {
     final h = (val / maxV * barArea).clamp(0.0, barArea);
     return Container(
       width: _barW,
       height: h,
       decoration: BoxDecoration(
-        color: chartBarColor(val, border, ball: ball),
+        color: chartBarColor(val, border),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
       ),
     );

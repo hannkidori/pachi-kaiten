@@ -25,10 +25,10 @@ class HomeScreen extends StatefulWidget {
 class _ActiveSummary {
   final Session session;
   final Machine machine;
-  final String investK;
+  final String consumedK;
   final int totalSpins;
   final String lastTime;
-  const _ActiveSummary(this.session, this.machine, this.investK,
+  const _ActiveSummary(this.session, this.machine, this.consumedK,
       this.totalSpins, this.lastTime);
 }
 
@@ -54,7 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
         final stats = computeStats(
           entries: entries,
           border: machine.borderFor(session.ballPrice) ?? 0,
-          ballPrice: session.ballPrice,
         );
         final last = entries.isNotEmpty
             ? DateTime.tryParse(entries.last.createdAt)
@@ -63,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? '--:--'
             : '${last.hour.toString().padLeft(2, '0')}:'
                 '${last.minute.toString().padLeft(2, '0')}';
-        summary = _ActiveSummary(session, machine, fmtK(stats.cashInvest),
+        summary = _ActiveSummary(session, machine, fmtK(stats.consumedYen),
             stats.totalRotations, hhmm);
       }
     }
@@ -217,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: AppTheme.sans(size: 14, weight: FontWeight.w500)),
           const SizedBox(height: 4),
           Text(
-            '投資 ${a.investK} ・ ${a.totalSpins}回転 ・ 最終入力 ${a.lastTime}',
+            '消化 ${a.consumedK}分 ・ ${a.totalSpins}回転 ・ 最終入力 ${a.lastTime}',
             style: AppTheme.mono(size: 12, color: AppColors.muted),
           ),
           const SizedBox(height: 14),

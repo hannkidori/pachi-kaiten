@@ -64,35 +64,32 @@ void main() {
     expect(active!.id, s.id);
   });
 
-  test('決定タップは即時書き込み、cash は投資自動加算', () async {
+  test('決定タップは即時書き込み、消化は自動加算', () async {
     final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
-    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
-    await service.recordCount(s, counter: 41, mode: EntryMode.cash);
+    await service.recordCount(s, counter: 20);
+    await service.recordCount(s, counter: 41);
 
     final stats = await service.stats(s, _machine);
-    expect(stats.cashInvest, 2000);
-    expect(stats.cashRotations, 41);
+    expect(stats.consumedYen, 2000);
+    expect(stats.totalRotations, 41);
     expect(stats.rotationRate, closeTo(20.5, 1e-9));
   });
 
-  test('大当り→復帰でモードが ball に切り替わり、rebase は回転に数えない', () async {
+  test('大当り→復帰で rebase は回転に数えず、以降の決定は算入される', () async {
     final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
-    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+    await service.recordCount(s, counter: 20);
     await service.recordRebase(s, counter: 500);
+    await service.recordCount(s, counter: 530);
 
-    expect(await service.currentMode(s.id!), EntryMode.ball);
-
-    await service.recordCount(s, counter: 530, mode: EntryMode.ball);
     final stats = await service.stats(s, _machine);
     expect(stats.totalRotations, 50);
-    expect(stats.cashRotations, 20);
-    expect(stats.cashInvest, 1000);
+    expect(stats.consumedYen, 2000);
     expect(stats.bonusCount, 1);
   });
 
   test('1つ戻すは直前の count のみ削除、start / rebase は戻せない', () async {
     final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
-    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+    await service.recordCount(s, counter: 20);
 
     expect(await service.undoLastCount(s.id!), isTrue);
     var ev = await entryRepo.bySession(s.id!);
@@ -110,7 +107,7 @@ void main() {
 
   test('close で closed になり回収額が入る(任意)', () async {
     final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
-    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+    await service.recordCount(s, counter: 20);
     final closed = await service.close(s, recovery: 3000);
 
     expect(closed.state, SessionState.closed);
@@ -125,7 +122,7 @@ void main() {
 
   test('close は回収額なし(スキップ)でも closed にできる', () async {
     final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
-    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+    await service.recordCount(s, counter: 20);
     final closed = await service.close(s);
     expect(closed.state, SessionState.closed);
     expect(closed.recovery, isNull);
@@ -133,7 +130,7 @@ void main() {
 
   test('discard はセッションとイベントを物理削除する', () async {
     final s = await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
-    await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+    await service.recordCount(s, counter: 20);
 
     await service.discard(s.id!);
     expect(await sessionRepo.byId(s.id!), isNull);

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 
 import '../logic/anomaly.dart';
@@ -19,10 +17,12 @@ class ConfirmPrompt {
 }
 
 /// 直前のコミットで起きたこと(画面のフィードバック演出用)。
-enum CommitFeedback { none, cashCommit, ballCommit, rebase }
+enum CommitFeedback { none, commit, rebase }
 
 /// 計測画面の状態。DB(SessionService)を唯一の真実とし、[entries] はその
 /// 読み出しキャッシュ。決定・大当り・戻すは即時に DB へ反映してから再読込する。
+///
+/// 現金/持ち玉の区別は持たない。決定は常に「1 単位(1000/500円分)消化」の申告。
 class MeasurementController extends ChangeNotifier {
   final SessionService service;
   Session session;
@@ -30,9 +30,7 @@ class MeasurementController extends ChangeNotifier {
 
   List<Entry> _entries = const [];
   String _typed = '';
-  EntryMode _mode = EntryMode.cash;
-  int _cashUnit; // 現金の加算単位(円): 1000 / 500
-  late int _ballUnit; // 持ち玉の消費単位(玉): base / 2×base(貸玉連動)
+  int _unit; // 加算単位(円): 1000 / 500
   bool _hit = false; // 大当り復帰値の入力中
   bool _error = false; // 入力枠の赤シェイク
   ConfirmPrompt? _confirm;
@@ -40,55 +38,34 @@ class MeasurementController extends ChangeNotifier {
   // ---- フィードバック用の一過性状態 ----
   int _feedbackTick = 0; // コミットのたびに増える(画面が変化を検知する)
   CommitFeedback _lastFeedback = CommitFeedback.none;
-  int? _rebaseAnnounce; // rebase 直後、数秒間バナーに出す「基準を{値}に更新」の値
-  Timer? _announceTimer;
 
   MeasurementController({
     required this.service,
     required this.session,
     required this.machine,
-  }) : _cashUnit = session.addUnit {
-    _ballUnit = _ballUnitBase; // 貸玉連動の基準玉数(4円=250, 1円=1000)
-  }
-
-  /// 持ち玉単位の基準玉数(= 1000 円相当の玉数)。4円=250 / 1円=1000。
-  int get _ballUnitBase => (1000 / session.ballPrice).round();
+  }) : _unit = session.addUnit;
 
   // ---- 公開状態 ----
   List<Entry> get entries => _entries;
   String get typed => _typed;
-  EntryMode get mode => _mode;
-  int get cashUnit => _cashUnit;
-  int get ballUnit => _ballUnit;
+  int get unit => _unit;
 
-  /// 異常判定に使う「この決定の投資相当額(円)」。
-  int get activeUnitYen =>
-      isCash ? _cashUnit : (_ballUnit * session.ballPrice).round();
+  /// 単位チップの表示。「+1000」/「+500」。
+  String get unitChipLabel => '+$_unit';
 
-  /// 単位チップの表示。現金は「+1000」、持ち玉は「250玉」。
-  String get unitChipLabel => isCash ? '+$_cashUnit' : '$_ballUnit玉';
-
-  /// 決定ボタンのサブ表示。現金は「+1000円」、持ち玉は「250玉」。
-  String get commitSubLabel => isCash ? '+$_cashUnit円' : '$_ballUnit玉';
+  /// 決定ボタンのサブ表示。「+1000円分」/「+500円分」。
+  String get commitSubLabel => '+$_unit円分';
 
   bool get isHit => _hit;
   bool get isError => _error;
   ConfirmPrompt? get confirm => _confirm;
-  bool get isCash => _mode == EntryMode.cash;
-  bool get isBall => _mode == EntryMode.ball;
+
+  /// ボーダーがあるか(クイック計測は false)。
+  bool get hasBorder => (machine.borderFor(session.ballPrice) ?? 0) > 0;
 
   /// コミットのたびに増えるシーケンス。画面はこの変化でハプティクス/演出を発火する。
   int get feedbackTick => _feedbackTick;
   CommitFeedback get lastFeedback => _lastFeedback;
-
-  /// rebase 直後の数秒間だけ非 null。バナーの強調表示に使う。
-  int? get rebaseAnnounce => _rebaseAnnounce;
-
-  @override
-  void dispose() {
-    _announceTimer?.cancel();
-    super.dispose();
-  }
 
   /// 直近イベントが count でない(start / rebase 直後)= 異常判定をスキップする境界。
   /// UI のゲートには使わない(計測画面は常に通常状態で開く)。
@@ -105,16 +82,11 @@ class MeasurementController extends ChangeNotifier {
   RotationStats get stats => computeStats(
         entries: _entries,
         border: machine.borderFor(session.ballPrice) ?? 0,
-        ballPrice: session.ballPrice,
       );
 
-  /// DB からイベントを読み込み、現在モードを最終イベントから導出する。
+  /// DB からイベントを読み込む。
   Future<void> load() async {
     _entries = await service.entriesOf(session.id!);
-    final last = _lastEntry;
-    if (last != null) {
-      _mode = last.type == EntryType.rebase ? EntryMode.ball : last.mode;
-    }
     notifyListeners();
   }
 
@@ -138,21 +110,10 @@ class MeasurementController extends ChangeNotifier {
     });
   }
 
-  // ---- モード / 単位 ----
-  void setMode(EntryMode m) {
-    if (_hit) return;
-    _mode = m;
-    notifyListeners();
-  }
-
+  // ---- 単位 ----
   void cycleUnit() {
     if (_hit) return;
-    if (isCash) {
-      _cashUnit = _cashUnit == 1000 ? 500 : 1000;
-    } else {
-      // 持ち玉: 基準玉数 ↔ 2×基準玉数(4円=250/500, 1円=1000/2000)。
-      _ballUnit = _ballUnit == _ballUnitBase ? _ballUnitBase * 2 : _ballUnitBase;
-    }
+    _unit = _unit == 1000 ? 500 : 1000;
     notifyListeners();
   }
 
@@ -192,13 +153,7 @@ class MeasurementController extends ChangeNotifier {
       _typed = '';
       _lastFeedback = CommitFeedback.rebase;
       _feedbackTick++;
-      _rebaseAnnounce = n; // 数秒間バナーに「基準を{n}に更新」を出す
-      _announceTimer?.cancel();
-      _announceTimer = Timer(const Duration(seconds: 3), () {
-        _rebaseAnnounce = null;
-        notifyListeners();
-      });
-      await load(); // mode は rebase により ball になる
+      await load();
       return;
     }
 
@@ -206,7 +161,7 @@ class MeasurementController extends ChangeNotifier {
     final delta = n - prev;
     final kind = detectAnomaly(
       diff: delta,
-      addUnit: activeUnitYen, // 持ち玉も円換算した投資相当でしきい値を出す
+      addUnit: _unit,
       isFirstAfterOrigin: _firstAfterOrigin,
     );
     if (kind != AnomalyKind.none) {
@@ -218,20 +173,11 @@ class MeasurementController extends ChangeNotifier {
   }
 
   Future<void> _doCommit(int n) async {
-    final committedMode = _mode;
-    // cash は現金投資(円)、ball は持ち玉消費(玉)を確定する。
-    await service.recordCount(
-      session,
-      counter: n,
-      mode: committedMode,
-      investAdded: committedMode == EntryMode.cash ? _cashUnit : null,
-      ballsAdded: committedMode == EntryMode.ball ? _ballUnit : 0,
-    );
+    // 常に 1 単位(_unit 円分)消化として確定する。
+    await service.recordCount(session, counter: n, yen: _unit);
     _typed = '';
     _confirm = null;
-    _lastFeedback = committedMode == EntryMode.ball
-        ? CommitFeedback.ballCommit
-        : CommitFeedback.cashCommit;
+    _lastFeedback = CommitFeedback.commit;
     _feedbackTick++;
     await load();
   }

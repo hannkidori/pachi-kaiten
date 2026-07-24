@@ -70,6 +70,7 @@ void main() {
       expect(entries.length, 2); // start + count
       expect(entries.last.type, EntryType.count);
       expect(entries.last.counter, 25);
+      expect(entries.last.yen, 1000); // 1 単位消化
       expect(c.stats.rotationRate, closeTo(25.0, 1e-9)); // 25回転 / 1k
       expect(c.typed, isEmpty);
     });
@@ -104,7 +105,7 @@ void main() {
       expect(entries.last.counter, 150);
     });
 
-    test('大当り→復帰で rebase が書かれ ball モードになる', () async {
+    test('大当り→復帰で rebase が書かれ、通常状態に戻る', () async {
       final c = await startController();
       type(c, '100');
       await c.commit();
@@ -115,46 +116,41 @@ void main() {
       await c.commit();
 
       expect(c.isHit, isFalse);
-      expect(c.isBall, isTrue);
       final entries = await entryRepo.bySession(c.session.id!);
       expect(entries.last.type, EntryType.rebase);
       expect(entries.last.counter, 500);
       expect(c.stats.bonusCount, 1);
     });
 
-    test('持ち玉モード中の 大当り→復帰→決定 でも rebase が書き込まれる', () async {
-      // 持ち玉遊技中に次の当りを引く通常フロー。cash 起点だけでなく
-      // ball 起点でも大当り→rebase が成立することを保証する(検出漏れ防止)。
+    test('大当り→復帰→決定→再度大当り でも rebase が書き込まれる', () async {
+      // 復帰後(rebase 起点)からも次の大当り→rebase が成立する(検出漏れ防止)。
       final c = await startController();
       type(c, '100');
-      await c.commit(); // cash count
+      await c.commit(); // count
       c.startHit();
       type(c, '300');
-      await c.commit(); // rebase → 持ち玉モード
-      expect(c.isBall, isTrue);
+      await c.commit(); // rebase
       type(c, '330');
-      await c.commit(); // ball count
+      await c.commit(); // count(復帰後の最初の決定も算入)
 
-      // ここで持ち玉モードのまま次の大当り。
       c.startHit();
       expect(c.isHit, isTrue);
       type(c, '800');
       await c.commit();
 
       expect(c.isHit, isFalse);
-      expect(c.isBall, isTrue);
       final entries = await entryRepo.bySession(c.session.id!);
       expect(entries.last.type, EntryType.rebase);
       expect(entries.last.counter, 800);
       expect(c.stats.bonusCount, 2); // 大当り 2 回
     });
 
-    test('フィードバック: コミット種別ごとに lastFeedback と rebaseAnnounce が立つ', () async {
+    test('フィードバック: コミット種別ごとに lastFeedback が立つ', () async {
       final c = await startController();
 
       type(c, '20');
-      await c.commit(); // cash
-      expect(c.lastFeedback, CommitFeedback.cashCommit);
+      await c.commit(); // count
+      expect(c.lastFeedback, CommitFeedback.commit);
       final t1 = c.feedbackTick;
       expect(t1, greaterThan(0));
 
@@ -162,68 +158,47 @@ void main() {
       type(c, '300');
       await c.commit(); // rebase
       expect(c.lastFeedback, CommitFeedback.rebase);
-      expect(c.rebaseAnnounce, 300); // バナー告知値
       expect(c.feedbackTick, greaterThan(t1));
 
       type(c, '330');
-      await c.commit(); // ball
-      expect(c.lastFeedback, CommitFeedback.ballCommit);
+      await c.commit(); // count
+      expect(c.lastFeedback, CommitFeedback.commit);
     });
 
-    test('持ち玉決定でヘッダー総回転(stats.totalRotations)が更新される', () async {
+    test('復帰後の決定でヘッダー総回転(stats.totalRotations)が更新される', () async {
       final c = await startController();
       type(c, '20');
-      await c.commit(); // cash: total 20
+      await c.commit(); // total 20
       c.startHit();
       type(c, '300');
-      await c.commit(); // rebase → 持ち玉モード(total は増えない)
+      await c.commit(); // rebase(total は増えない)
       final before = c.stats.totalRotations;
       expect(before, 20);
 
       type(c, '330');
-      await c.commit(); // ball count: +30
+      await c.commit(); // +30
       // 表示元の stats が即座に更新されている(古い値が残らない)。
       expect(c.stats.totalRotations, before + 30);
-      expect(c.isBall, isTrue);
     });
 
-    test('持ち玉単位は貸玉に連動(4円=250/500)し、決定で消費玉を記録', () async {
-      final c = await startController(); // ballPrice 4.0
-      type(c, '20');
-      await c.commit(); // cash 20
-      c.setMode(EntryMode.ball);
-      expect(c.ballUnit, 250);
-      expect(c.unitChipLabel, '250玉');
-      expect(c.commitSubLabel, '250玉');
-      expect(c.activeUnitYen, 1000); // 250玉 × 4円
+    test('加算単位トグルは +1000 ↔ +500', () async {
+      final c = await startController();
+      expect(c.unit, 1000);
+      expect(c.unitChipLabel, '+1000');
+      expect(c.commitSubLabel, '+1000円分');
 
       c.cycleUnit();
-      expect(c.ballUnit, 500);
-      expect(c.activeUnitYen, 2000);
-      c.cycleUnit();
-      expect(c.ballUnit, 250);
+      expect(c.unit, 500);
+      expect(c.unitChipLabel, '+500');
+      expect(c.commitSubLabel, '+500円分');
 
-      type(c, '50'); // 差分 30
-      await c.commit(); // ball
+      // 500円単位の決定は yen=500 で記録される。
+      type(c, '10');
+      await c.commit();
       final entries = await entryRepo.bySession(c.session.id!);
-      expect(entries.last.mode, EntryMode.ball);
-      expect(entries.last.ballsAdded, 250);
-      // 持ち玉も R に算入される。
-      expect(c.stats.measuredRotations, 20 + 30);
-      expect(c.stats.measuredInvest, 1000 + 250 * 4);
-    });
-
-    test('1円貸しは持ち玉単位 1000/2000', () async {
-      final session = await service.start(
-          machine: _machine, ballPrice: 1.0, startCounter: 0);
-      final c = MeasurementController(
-          service: service, session: session, machine: _machine);
-      await c.load();
-      c.setMode(EntryMode.ball);
-      expect(c.ballUnit, 1000);
-      expect(c.unitChipLabel, '1000玉');
+      expect(entries.last.yen, 500);
       c.cycleUnit();
-      expect(c.ballUnit, 2000);
+      expect(c.unit, 1000);
     });
 
     test('1つ戻すは直前の count のみ削除する', () async {
@@ -264,6 +239,7 @@ void main() {
     expect(find.text('決定'), findsOneWidget);
     expect(find.text('回転率'), findsOneWidget);
     expect(find.text('--.-'), findsOneWidget); // 未計測
+    expect(find.text('+1000'), findsOneWidget); // 加算単位チップ
   });
 
   // ---- グラフの色ルール ----
@@ -290,18 +266,16 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     tester.view.devicePixelRatio = 1.0;
 
-    // 実データのある stats を作る(現金区間 4 本)。
+    // 実データのある stats を作る(区間 4 本)。
     final entries = <Entry>[
       const Entry(
-          sessionId: 1, type: EntryType.start, counter: 0,
-          mode: EntryMode.cash, createdAt: 't0'),
+          sessionId: 1, type: EntryType.start, counter: 0, createdAt: 't0'),
       for (var i = 0; i < 4; i++)
         Entry(
             sessionId: 1, type: EntryType.count, counter: (i + 1) * 18,
-            mode: EntryMode.cash, investAdded: 1000, createdAt: 't${i + 1}'),
+            yen: 1000, createdAt: 't${i + 1}'),
     ];
-    final stats =
-        computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
+    final stats = computeStats(entries: entries, border: 16.5);
 
     for (final h in <double>[4, 12, 20, 40, 60, 85]) {
       await tester.pumpWidget(MediaQuery(
@@ -330,20 +304,17 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     final entries = <Entry>[
       const Entry(
-          sessionId: 1, type: EntryType.start, counter: 0,
-          mode: EntryMode.cash, createdAt: 't0'),
+          sessionId: 1, type: EntryType.start, counter: 0, createdAt: 't0'),
       const Entry(
           sessionId: 1, type: EntryType.count, counter: 20,
-          mode: EntryMode.cash, investAdded: 1000, createdAt: 't1'),
+          yen: 1000, createdAt: 't1'),
       const Entry(
-          sessionId: 1, type: EntryType.rebase, counter: 500,
-          mode: EntryMode.ball, createdAt: 't2'),
+          sessionId: 1, type: EntryType.rebase, counter: 500, createdAt: 't2'),
       const Entry(
           sessionId: 1, type: EntryType.count, counter: 530,
-          mode: EntryMode.ball, createdAt: 't3'),
+          yen: 1000, createdAt: 't3'),
     ];
-    final stats =
-        computeStats(entries: entries, border: 16.5, ballPrice: 4.0);
+    final stats = computeStats(entries: entries, border: 16.5);
     expect(stats.rebaseMarkers, [1]);
 
     await tester.pumpWidget(MaterialApp(
@@ -370,8 +341,7 @@ void main() {
       var counter = 0;
       for (final diff in [18, 15, 20, 14, 22, 16, 19, 13]) {
         counter += diff;
-        await service.recordCount(c.session,
-            counter: counter, mode: EntryMode.cash);
+        await service.recordCount(c.session, counter: counter);
       }
       await c.load();
     });
@@ -424,54 +394,25 @@ void main() {
     expect(find.text('500'), findsOneWidget); // 画面に表示されている
   }
 
-  testWidgets('現金モード: 大当り後にテンキー入力が反映される', (tester) async {
+  testWidgets('大当り後にテンキー入力が反映される', (tester) async {
     late MeasurementController c;
     await tester.runAsync(() async {
       c = await startController();
-      await service.recordCount(c.session, counter: 20, mode: EntryMode.cash);
+      await service.recordCount(c.session, counter: 20);
       await c.load();
     });
     await expectHitInputReflects(tester, c);
   });
 
-  testWidgets('持ち玉モード: 大当り後にテンキー入力が反映される', (tester) async {
+  testWidgets('復帰後(継続中)でも大当り入力が反映される', (tester) async {
     late MeasurementController c;
     await tester.runAsync(() async {
       c = await startController();
-      await service.recordCount(c.session, counter: 20, mode: EntryMode.cash);
-      await service.recordRebase(c.session, counter: 300); // → 持ち玉モード
-      await service.recordCount(c.session, counter: 330, mode: EntryMode.ball);
+      await service.recordCount(c.session, counter: 20);
+      await service.recordRebase(c.session, counter: 300);
+      await service.recordCount(c.session, counter: 330);
       await c.load();
     });
-    expect(c.isBall, isTrue); // 持ち玉モードから開始
     await expectHitInputReflects(tester, c);
-  });
-
-  testWidgets('持ち玉モードの表示: バナー「持ち玉計測中」/単位「250玉」/決定「250玉」',
-      (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    late MeasurementController c;
-    await tester.runAsync(() async {
-      c = await startController();
-      await service.recordCount(c.session, counter: 20, mode: EntryMode.cash);
-      await service.recordRebase(c.session, counter: 300); // → 持ち玉モード
-      await c.load();
-    });
-    expect(c.isBall, isTrue);
-
-    await tester.pumpWidget(MaterialApp(
-      home: MeasurementScreen(
-          controller: c, services: services, keepAwake: false),
-    ));
-    await tester.pump();
-
-    expect(find.text('持ち玉計測中'), findsOneWidget);
-    expect(find.textContaining('計測から除外'), findsNothing); // 除外バナー廃止
-    // 単位チップと決定ボタンのサブ表示に「250玉」。
-    expect(find.text('250玉'), findsNWidgets(2));
   });
 }

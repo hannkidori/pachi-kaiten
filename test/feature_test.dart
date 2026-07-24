@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pachi_kaiten/logic/backup_service.dart';
 import 'package:pachi_kaiten/logic/session_service.dart';
-import 'package:pachi_kaiten/models/entry.dart';
 import 'package:pachi_kaiten/models/machine.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
@@ -78,7 +77,7 @@ void main() {
       );
       const m = Machine(id: 1, name: 'X', border4: 16.5);
       final s = await service.start(machine: m, ballPrice: 4.0, startCounter: 0);
-      await service.recordCount(s, counter: 20, mode: EntryMode.cash);
+      await service.recordCount(s, counter: 20);
       await service.endAndLog(s, m, recovery: 3000);
 
       final data = await BackupService(db).exportData();

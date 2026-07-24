@@ -1,12 +1,9 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../logic/anomaly.dart';
 import '../../logic/rotation_calc.dart';
-import '../../models/entry.dart';
 import '../../models/machine.dart';
 import '../../services/app_services.dart';
 import '../../state/measurement_controller.dart';
@@ -21,7 +18,8 @@ import 'rotation_chart.dart';
 enum MeasureIntent { normal, end }
 
 /// 計測画面(確定デザイン準拠)。決定フロー / 大当り / 戻す / 異常確認 /
-/// 現金・持ち玉 / 加算単位トグル / 千円ごとの回転グラフ / 終了・台移動。
+/// 加算単位トグル / 千円ごとの回転グラフ / 終了・台移動。
+/// 決定は常に「1 単位消化」の申告(現金/持ち玉の区別なし)。
 class MeasurementScreen extends StatefulWidget {
   final MeasurementController controller;
   final AppServices services;
@@ -48,8 +46,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     with TickerProviderStateMixin {
   final _chartCtrl = ScrollController();
   late final AnimationController _shake;
-  late final AnimationController _bannerFlash; // rebase 時のバナー強調
-  late final AnimationController _totalPulse; // 持ち玉決定時の総回転ハイライト
   int _lastLen = -1;
   int _lastFeedbackTick = 0;
   bool _wasError = false;
@@ -67,14 +63,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _bannerFlash = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _totalPulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
     _lastFeedbackTick = _c.feedbackTick;
     if (widget.keepAwake) WakelockPlus.enable();
     _c.addListener(_onChange);
@@ -89,8 +77,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     _c.removeListener(_onChange);
     if (widget.keepAwake) WakelockPlus.disable();
     _shake.dispose();
-    _bannerFlash.dispose();
-    _totalPulse.dispose();
     _chartCtrl.dispose();
     super.dispose();
   }
@@ -103,25 +89,21 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     }
     _wasError = c.isError;
 
-    // コミットのフィードバック(ハプティクス + 演出)。
+    // コミットのフィードバック(ハプティクス)。
     if (c.feedbackTick != _lastFeedbackTick) {
       _lastFeedbackTick = c.feedbackTick;
       switch (c.lastFeedback) {
         case CommitFeedback.rebase:
           HapticFeedback.heavyImpact();
-          _bannerFlash.forward(from: 0);
-        case CommitFeedback.ballCommit:
-          HapticFeedback.mediumImpact();
-          _totalPulse.forward(from: 0);
-        case CommitFeedback.cashCommit:
+        case CommitFeedback.commit:
           HapticFeedback.selectionClick();
         case CommitFeedback.none:
           break;
       }
     }
 
-    // バー本数(計測対象=現金+消費玉>0の持ち玉)が増えたら末尾へスクロール。
-    final len = c.stats.segments.where((s) => s.measured).length;
+    // バー本数が増えたら末尾へスクロール。
+    final len = c.stats.segments.length;
     if (len != _lastLen) {
       _lastLen = len;
       WidgetsBinding.instance.addPostFrameCallback((_) => _snapChart());
@@ -166,7 +148,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final go = await showMoveConfirm(
       context,
       machineName: c.machine.name,
-      investK: fmtK(st.cashInvest),
+      investK: fmtK(st.consumedYen),
       totalSpins: st.totalRotations,
     );
     if (go != true || !mounted) return;
@@ -304,41 +286,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         border: const Color(0x73E3B168),
       );
     }
-    // rebase 直後の数秒間は「基準を{値}に更新」を強調表示(点滅)。
-    final announce = c.rebaseAnnounce;
-    if (announce != null) {
-      return AnimatedBuilder(
-        animation: _bannerFlash,
-        builder: (context, _) => _bannerBar(
-          dot: AppColors.accent,
-          label: '基準を$announceに更新',
-          labelColor: AppColors.accentSoft,
-          note: '— 持ち玉で継続中',
-          bg: const Color(0x1F6BCBDD),
-          border: const Color(0x666BCBDD),
-          flash: _flashIntensity(),
-        ),
-      );
-    }
-    if (c.isBall) {
-      return _bannerBar(
-        dot: AppColors.accent,
-        label: '持ち玉計測中',
-        labelColor: AppColors.accentSoft,
-        note: '— 消費玉も回転率に算入',
-        bg: const Color(0x1F6BCBDD),
-        border: const Color(0x666BCBDD),
-      );
-    }
     return const SizedBox.shrink();
-  }
-
-  /// rebase バナーの点滅強度(0..1)。900ms かけて 2 回ほど明滅して収束する。
-  double _flashIntensity() {
-    final t = _bannerFlash.value;
-    if (t <= 0 || t >= 1) return 0;
-    final blink = math.cos(t * 4 * math.pi).clamp(0.0, 1.0);
-    return (1 - t) * blink;
   }
 
   Widget _bannerBar({
@@ -348,18 +296,13 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     required String note,
     required Color bg,
     required Color border,
-    double flash = 0,
   }) {
-    // flash の分だけ背景・枠を明るく重ねる(強調)。
-    final overlay = Color.lerp(bg, const Color(0x556BCBDD), flash)!;
-    final overlayBorder =
-        Color.lerp(border, const Color(0xCC6BCBDD), flash)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
       decoration: BoxDecoration(
-        color: overlay,
-        border: Border(bottom: BorderSide(color: overlayBorder)),
+        color: bg,
+        border: Border(bottom: BorderSide(color: border)),
       ),
       child: Row(
         children: [
@@ -401,28 +344,17 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
-          // 総回転(最後の項目)は持ち玉決定時に短くハイライトする。
-          AnimatedBuilder(
-            animation: _totalPulse,
-            builder: (context, _) {
-              final p = _totalPulse.isAnimating ? (1 - _totalPulse.value) : 0.0;
-              return _statLine(
-                [
-                  ('ボーダー', borderText),
-                  ('投資', fmtK(st.cashInvest)),
-                  ('総回転', '${st.totalRotations}'),
-                ],
-                highlightLastAmount: p,
-              );
-            },
-          ),
+          _statLine([
+            if (c.hasBorder) ('ボーダー', borderText),
+            ('消化', fmtK(st.consumedYen)),
+            ('総回転', '${st.totalRotations}'),
+          ]),
         ],
       ),
     );
   }
 
-  Widget _statLine(List<(String, String)> items,
-      {double highlightLastAmount = 0}) {
+  Widget _statLine(List<(String, String)> items) {
     final spans = <InlineSpan>[];
     for (var i = 0; i < items.length; i++) {
       if (i > 0) {
@@ -433,15 +365,10 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       spans.add(TextSpan(
           text: '${items[i].$1} ',
           style: AppTheme.mono(size: 12, color: AppColors.muted)));
-      final isLast = i == items.length - 1;
-      final valueColor = isLast && highlightLastAmount > 0
-          ? Color.lerp(AppColors.textStrong, AppColors.accent,
-              highlightLastAmount)!
-          : AppColors.textStrong;
       spans.add(TextSpan(
           text: items[i].$2,
           style: AppTheme.mono(
-              size: 14, weight: FontWeight.w600, color: valueColor)));
+              size: 14, weight: FontWeight.w600, color: AppColors.textStrong)));
     }
     // 1 行に収める(折り返して高さが伸びる/横に溢れるのを防ぐ)。
     return FittedBox(
@@ -571,7 +498,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         children: [
           _actionChips(),
           const SizedBox(height: 8),
-          _modeRow(),
+          _unitRow(),
           const SizedBox(height: 8),
           _counterInput(),
           const SizedBox(height: 8),
@@ -630,18 +557,9 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     );
   }
 
-  Widget _modeRow() {
-    final gated = c.isHit;
+  Widget _unitRow() {
     return Row(
       children: [
-        Opacity(
-          opacity: gated ? 0.35 : 1,
-          child: IgnorePointer(
-            ignoring: gated,
-            child: _modeToggle(),
-          ),
-        ),
-        const SizedBox(width: 6),
         _unitButton(),
         const Spacer(),
         _undoButton(),
@@ -649,45 +567,8 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     );
   }
 
-  Widget _modeToggle() {
-    Widget seg(String label, bool on, VoidCallback onTap, Color onColor) {
-      return GestureDetector(
-        onTap: on ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          decoration: BoxDecoration(
-            color: on
-                ? (c.isBall ? const Color(0x296BCBDD) : AppColors.chipActive)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(label,
-              style: AppTheme.sans(
-                  size: 12.5,
-                  weight: on ? FontWeight.w500 : FontWeight.w400,
-                  color: on ? onColor : AppColors.mutedDark)),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        border: Border.all(
-            color: c.isBall ? const Color(0x666BCBDD) : AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        seg('現金', c.isCash, () => c.setMode(EntryMode.cash), AppColors.text),
-        seg('持ち玉', c.isBall, () => c.setMode(EntryMode.ball),
-            AppColors.accentSoft),
-      ]),
-    );
-  }
-
   Widget _unitButton() {
-    // 現金は「+1000/+500」、持ち玉は「250玉/500玉」(貸玉連動)。両モードで有効。
+    // 加算単位トグル「+1000 ⇅」/「+500 ⇅」。
     final gated = c.isHit;
     return Opacity(
       opacity: gated ? 0.35 : 1,
@@ -698,8 +579,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           padding: const EdgeInsets.symmetric(horizontal: 9),
           decoration: BoxDecoration(
             color: AppColors.surfaceAlt,
-            border: Border.all(
-                color: c.isBall ? const Color(0x666BCBDD) : AppColors.border),
+            border: Border.all(color: AppColors.border),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -707,9 +587,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                 style: AppTheme.mono(
                     size: 11,
                     weight: FontWeight.w600,
-                    color: c.isBall
-                        ? AppColors.accentSoft
-                        : AppColors.textStrong)),
+                    color: AppColors.textStrong)),
             const SizedBox(width: 4),
             Text('⇅',
                 style: AppTheme.sans(size: 9, color: AppColors.mutedDark)),
@@ -811,7 +689,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                     color: hit ? AppColors.hitInk : AppColors.accentInk)),
             const SizedBox(width: 10),
             Text(
-              hit ? '復帰後の値 → 持ち玉で継続' : c.commitSubLabel,
+              hit ? '復帰後の値' : c.commitSubLabel,
               style: AppTheme.mono(
                   size: 14,
                   weight: FontWeight.w600,

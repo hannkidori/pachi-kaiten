@@ -66,15 +66,14 @@ class AppDatabase {
       closed_at TEXT
     )
     ''',
+    // 決定は常に「1 単位(1000/500円分)消化」の申告。現金/持ち玉の区別は持たない。
     '''
     CREATE TABLE entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id INTEGER NOT NULL,
       type TEXT NOT NULL,
       counter INTEGER NOT NULL,
-      mode TEXT NOT NULL,
-      invest_added INTEGER NOT NULL DEFAULT 0,
-      balls_added INTEGER NOT NULL DEFAULT 0,
+      yen INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     )
     ''',
@@ -88,7 +87,7 @@ class AppDatabase {
       rotation_rate REAL,
       total_rotations INTEGER NOT NULL,
       ev_yen INTEGER,
-      invest_yen INTEGER NOT NULL,
+      consumed_yen INTEGER NOT NULL,
       bonus_count INTEGER NOT NULL,
       pl_yen INTEGER,
       created_at TEXT NOT NULL
