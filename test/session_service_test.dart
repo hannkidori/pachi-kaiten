@@ -148,4 +148,15 @@ void main() {
     expect(recent.first, 2); // 直近が先頭
     expect(recent.contains(1), isTrue);
   });
+
+  test('recentMachineIds はクイック計測(machine_id=NULL)を無視しクラッシュしない', () async {
+    // クイック計測(機種なし)→ machine_id NULL のセッションが残る。
+    await service.start(machine: null, ballPrice: 4.0, startCounter: 0);
+    t = t.add(const Duration(minutes: 10));
+    await service.start(machine: _machine, ballPrice: 4.0, startCounter: 0);
+
+    // NULL 行を num にキャストして落ちず、機種ありだけが返る。
+    final recent = await sessionRepo.recentMachineIds();
+    expect(recent, [1]);
+  });
 }

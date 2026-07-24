@@ -40,9 +40,11 @@ class SessionRepository {
   }
 
   /// 最近使った機種 id を新しい順に(重複除去)。機種検索の先頭表示用。
+  /// クイック計測(machine_id = NULL)は機種を持たないため対象外にする。
   Future<List<int>> recentMachineIds({int limit = 8}) async {
     final rows = await db.rawQuery(
       'SELECT machine_id, MAX(started_at) AS last FROM sessions '
+      'WHERE machine_id IS NOT NULL '
       'GROUP BY machine_id ORDER BY last DESC LIMIT ?',
       [limit],
     );
