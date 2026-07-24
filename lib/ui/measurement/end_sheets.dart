@@ -93,13 +93,32 @@ class RecoveryResult {
 Future<RecoveryResult?> showRecoverySheet(
   BuildContext context, {
   required bool forMove,
+  required String machineName,
+  required String rateStr,
+  required int totalSpins,
 }) {
-  return _showSheet<RecoveryResult>(context, _RecoverySheet(forMove: forMove));
+  return _showSheet<RecoveryResult>(
+    context,
+    _RecoverySheet(
+      forMove: forMove,
+      machineName: machineName,
+      rateStr: rateStr,
+      totalSpins: totalSpins,
+    ),
+  );
 }
 
 class _RecoverySheet extends StatefulWidget {
   final bool forMove;
-  const _RecoverySheet({required this.forMove});
+  final String machineName;
+  final String rateStr;
+  final int totalSpins;
+  const _RecoverySheet({
+    required this.forMove,
+    required this.machineName,
+    required this.rateStr,
+    required this.totalSpins,
+  });
 
   @override
   State<_RecoverySheet> createState() => _RecoverySheetState();
@@ -107,12 +126,14 @@ class _RecoverySheet extends StatefulWidget {
 
 class _RecoverySheetState extends State<_RecoverySheet> {
   String _typed = '';
+  bool _expanded = false; // 「＋ 回収額を記録」を展開したか
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.forMove ? '台移動 — この台の回収額' : 'セッション終了 — 回収額';
-    final display = _typed.isEmpty ? '0' : _typed;
     final hasInput = _typed.isNotEmpty;
+    // 主役 CTA。回収額を入力していればラベルに (＋回収額を記録) を足す。
+    final base = widget.forMove ? '終了して移動' : '終了する';
+    final ctaLabel = hasInput ? '$base(＋回収額を記録)' : base;
     return Container(
       decoration: _sheetDeco(),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -120,53 +141,70 @@ class _RecoverySheetState extends State<_RecoverySheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Text(title,
-                  style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
-              const Spacer(),
-              _closeButton(context),
-            ],
-          ),
+          Text('計測を終了',
+              style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Text('任意です。入力すると収支(P/L)も足跡に残ります',
-              style: AppTheme.sans(size: 11, color: AppColors.muted)),
-          const SizedBox(height: 10),
-          Container(
-            height: 52,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              border: Border.all(color: const Color(0x596BCBDD)),
-              borderRadius: BorderRadius.circular(10),
+          // 要約 1 行。
+          Text('${widget.machineName} ・ ${widget.rateStr}回/k ・ ${widget.totalSpins}回転',
+              style: AppTheme.mono(size: 12, color: AppColors.textStrong)),
+          const SizedBox(height: 16),
+          // 「＋ 回収額を記録 任意」の折りたたみ行。
+          if (!_expanded)
+            GestureDetector(
+              onTap: () => setState(() => _expanded = true),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.add, size: 15, color: AppColors.muted),
+                    const SizedBox(width: 6),
+                    Text('回収額を記録',
+                        style:
+                            AppTheme.sans(size: 12.5, color: AppColors.textDim)),
+                    const SizedBox(width: 6),
+                    Text('任意',
+                        style: AppTheme.sans(
+                            size: 10.5, color: AppColors.mutedDark)),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            Container(
+              height: 52,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                border: Border.all(color: const Color(0x5956D9F0)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Text('回収',
+                      style: AppTheme.sans(size: 10, color: AppColors.muted)),
+                  const Spacer(),
+                  Text('${_typed.isEmpty ? '0' : _typed}円',
+                      style: AppTheme.mono(size: 24, weight: FontWeight.w500)),
+                ],
+              ),
             ),
-            child: Row(
-              children: [
-                Text('回収',
-                    style: AppTheme.sans(size: 10, color: AppColors.muted)),
-                const Spacer(),
-                Text('$display円',
-                    style: AppTheme.mono(size: 24, weight: FontWeight.w500)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Numpad(
-            keyHeight: 44,
-            onKey: (k) =>
-                setState(() => _typed = applyKey(_typed, k, maxLen: 7)),
-          ),
-          const SizedBox(height: 12),
-          if (hasInput) ...[
-            _primaryButton('この回収額で記録',
-                onTap: () => Navigator.pop(
-                    context, RecoveryResult(int.tryParse(_typed) ?? 0))),
             const SizedBox(height: 10),
+            Numpad(
+              keyHeight: 44,
+              onKey: (k) =>
+                  setState(() => _typed = applyKey(_typed, k, maxLen: 7)),
+            ),
           ],
-          // スキップがデフォルト動線。大きく押しやすく。
-          _lightButton('スキップ',
-              height: 56,
-              onTap: () => Navigator.pop(context, const RecoveryResult(null))),
+          const SizedBox(height: 14),
+          // 主役 = 終了する(回収額なしで足跡保存)。入力があれば P/L も記録。
+          _gradientButton(
+            ctaLabel,
+            height: 58,
+            onTap: () => Navigator.pop(
+                context,
+                RecoveryResult(hasInput ? (int.tryParse(_typed) ?? 0) : null)),
+          ),
         ],
       ),
     );
@@ -261,7 +299,7 @@ class _MachinePickSheetState extends State<_MachinePickSheet> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(9),
-                borderSide: const BorderSide(color: Color(0x596BCBDD)),
+                borderSide: const BorderSide(color: Color(0x5956D9F0)),
               ),
             ),
           ),
@@ -402,7 +440,7 @@ class _NewCounterSheetState extends State<_NewCounterSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
               color: AppColors.surfaceAlt,
-              border: Border.all(color: const Color(0x596BCBDD)),
+              border: Border.all(color: const Color(0x5956D9F0)),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
@@ -440,6 +478,25 @@ Widget _primaryButton(String label,
       decoration: BoxDecoration(
         color: AppColors.accentDeep,
         borderRadius: BorderRadius.circular(11),
+      ),
+      child: Text(label,
+          style: AppTheme.sans(
+              size: 16, weight: FontWeight.w700, color: AppColors.accentInk)),
+    ),
+  );
+}
+
+/// 主役ボタン(シアングラデ)。v2 の「終了する」等に使う。
+Widget _gradientButton(String label,
+    {required VoidCallback onTap, double height = 58}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        gradient: AppColors.accentGradient,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(label,
           style: AppTheme.sans(

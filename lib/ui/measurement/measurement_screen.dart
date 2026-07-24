@@ -130,7 +130,14 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   /// count 0 件のセッションは endAndLog 側で足跡を残さず破棄される。
   Future<void> _endFlow() async {
     if (_flowBusy || c.isHit) return;
-    final result = await showRecoverySheet(context, forMove: false);
+    final st = c.stats;
+    final result = await showRecoverySheet(
+      context,
+      forMove: false,
+      machineName: c.machine?.name ?? '計測のみ',
+      rateStr: fmtRate(st.rotationRate),
+      totalSpins: st.totalRotations,
+    );
     if (result == null || !mounted) return; // dismiss = 中断
     _flowBusy = true;
     await s.sessionService
@@ -152,7 +159,13 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       totalSpins: st.totalRotations,
     );
     if (go != true || !mounted) return;
-    final result = await showRecoverySheet(context, forMove: true);
+    final result = await showRecoverySheet(
+      context,
+      forMove: true,
+      machineName: c.machine?.name ?? '計測のみ',
+      rateStr: fmtRate(st.rotationRate),
+      totalSpins: st.totalRotations,
+    );
     if (result == null || !mounted) return;
 
     _flowBusy = true;
