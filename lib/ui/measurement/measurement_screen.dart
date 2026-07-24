@@ -30,12 +30,16 @@ class MeasurementScreen extends StatefulWidget {
   /// 開いた直後に回収額シートへ直行するか。
   final MeasureIntent initialIntent;
 
+  /// 文脈内オンボーディングを有効にするか(テストでは false にしてDB読込を避ける)。
+  final bool enableOnboarding;
+
   const MeasurementScreen({
     super.key,
     required this.controller,
     required this.services,
     this.keepAwake = true,
     this.initialIntent = MeasureIntent.normal,
+    this.enableOnboarding = true,
   });
 
   @override
@@ -50,6 +54,10 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   int _lastFeedbackTick = 0;
   bool _wasError = false;
   bool _flowBusy = false; // 終了/台移動フロー実行中の多重起動防止
+
+  // 文脈内オンボーディング。0=なし / 1=カウンタ説明 / 2=大当り説明。
+  int _onbStep = 0;
+  bool _onbHitDone = true; // フラグ読込までは発火させない
 
   late MeasurementController _c;
   MeasurementController get c => _c;
@@ -68,8 +76,37 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     _c.addListener(_onChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _snapChart();
-      if (widget.initialIntent == MeasureIntent.end) _endFlow();
+      if (widget.initialIntent == MeasureIntent.end) {
+        _endFlow();
+      } else if (widget.enableOnboarding) {
+        _loadOnboarding();
+      }
     });
+  }
+
+  /// オンボーディングの表示済みフラグを読み込む。未表示なら初回スポットを出す。
+  Future<void> _loadOnboarding() async {
+    final counterDone = await s.settings.onbCounterDone();
+    final hitDone = await s.settings.onbHitDone();
+    if (!mounted) return;
+    setState(() {
+      _onbHitDone = hitDone;
+      // 初回の計測画面表示時、カウンタ+決定をスポット。
+      if (!counterDone) _onbStep = 1;
+    });
+  }
+
+  Future<void> _dismissOnbCounter() async {
+    setState(() => _onbStep = 0);
+    await s.settings.setOnbCounterDone();
+  }
+
+  Future<void> _dismissOnbHit() async {
+    setState(() {
+      _onbStep = 0;
+      _onbHitDone = true;
+    });
+    await s.settings.setOnbHitDone();
   }
 
   @override
@@ -97,6 +134,10 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           HapticFeedback.heavyImpact();
         case CommitFeedback.commit:
           HapticFeedback.selectionClick();
+          // 初セッションの決定5回目で大当りボタンの説明を1回だけ出す。
+          if (!_onbHitDone && _onbStep == 0 && c.commitCount == 5) {
+            setState(() => _onbStep = 2);
+          }
         case CommitFeedback.none:
           break;
       }
@@ -279,9 +320,79 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                   ],
                 ),
                 if (c.confirm != null) _confirmSheet(c.confirm!),
+                if (_onbStep == 1)
+                  _onbOverlay(
+                    align: Alignment.bottomCenter,
+                    text: '1000円分打ったら、台の上の回転数を入力して決定。'
+                        'それだけで回転率が出ます。',
+                    button: 'はじめる',
+                    onTap: _dismissOnbCounter,
+                  ),
+                if (_onbStep == 2)
+                  _onbOverlay(
+                    align: Alignment.topCenter,
+                    text: '大当りしたら打ち終わるまでそのまま。通常に戻ったら'
+                        '『大当り』を押して、台の上の回転数を入れ直すだけ。',
+                    button: 'OK',
+                    onTap: _dismissOnbHit,
+                  ),
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  /// 文脈内オンボーディングのスポットライト(対象方向に説明カードを浮かせる)。
+  /// 実画面を暗幕で覆い、指定方向にメッセージ + ボタンを出す。
+  Widget _onbOverlay({
+    required Alignment align,
+    required String text,
+    required String button,
+    required VoidCallback onTap,
+  }) {
+    return Positioned.fill(
+      child: Container(
+        color: const Color(0xD6040507), // rgba(4,5,7,0.84)
+        padding: const EdgeInsets.all(28),
+        child: Align(
+          alignment: align,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 24, top: 24),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: Border.all(color: const Color(0x5956D9F0)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(text,
+                    style: AppTheme.sans(
+                        size: 13.5, color: AppColors.text, height: 1.7)),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: onTap,
+                  child: Container(
+                    height: 46,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.accentGradient,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Text(button,
+                        style: AppTheme.sans(
+                            size: 15,
+                            weight: FontWeight.w700,
+                            color: AppColors.accentInk)),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -82,6 +82,10 @@ class MeasurementController extends ChangeNotifier {
   /// 差分計算の起点カウンタ(最後のイベントの counter)。
   int get lastCounter => _lastEntry?.counter ?? 0;
 
+  /// 決定(count)コミットの回数。オンボーディングの発火判定に使う。
+  int get commitCount =>
+      _entries.where((e) => e.type == EntryType.count).length;
+
   RotationStats get stats => computeStats(
         entries: _entries,
         border: machine?.borderFor(session.ballPrice) ?? 0,
