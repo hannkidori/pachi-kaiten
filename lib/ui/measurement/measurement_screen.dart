@@ -336,20 +336,54 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            c.machine.name,
-            style: AppTheme.sans(
-                size: 14, weight: FontWeight.w500, letterSpacing: 0.02 * 14),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  c.hasBorder ? c.machine.name : '計測のみ',
+                  style: AppTheme.sans(
+                      size: 14,
+                      weight: FontWeight.w500,
+                      letterSpacing: 0.02 * 14,
+                      color: c.hasBorder ? AppColors.text : AppColors.muted),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _endGhostButton(),
+            ],
           ),
           const SizedBox(height: 8),
           _statLine([
-            if (c.hasBorder) ('ボーダー', borderText),
-            ('消化', fmtK(st.consumedYen)),
+            if (c.hasBorder) ('B', borderText),
+            ('消化', '${fmtK(st.consumedYen)}分'),
             ('総回転', '${st.totalRotations}'),
           ]),
         ],
+      ),
+    );
+  }
+
+  /// ヘッダー右端の「終了」ゴーストボタン(30px高)。大当り中は無効。
+  Widget _endGhostButton() {
+    final enabled = !c.isHit;
+    return Opacity(
+      opacity: enabled ? 1 : 0.3,
+      child: GestureDetector(
+        onTap: enabled ? _endFlow : null,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text('終了',
+              style: AppTheme.sans(size: 12, color: AppColors.textDim)),
+        ),
       ),
     );
   }
@@ -415,8 +449,11 @@ class _MeasurementScreenState extends State<MeasurementScreen>
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          _diffPill(st),
+          // ボーダー比ボックスは hasBorder のときだけ表示(クイック計測では出さない)。
+          if (c.hasBorder) ...[
+            const SizedBox(height: 10),
+            _diffPill(st),
+          ],
           const SizedBox(height: 14),
           // グラフはヒーローの残り高さに追従して縮む(自身で溢れないよう保証)。
           Flexible(
@@ -496,9 +533,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       child: Column(
         children: [
-          _actionChips(),
-          const SizedBox(height: 8),
-          _unitRow(),
+          _operationRow(),
           const SizedBox(height: 8),
           _counterInput(),
           const SizedBox(height: 8),
@@ -510,26 +545,48 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     );
   }
 
-  Widget _actionChips() {
+  /// 操作行: [★大当り] [⇄台移動] [+1000⇅ 単位] …… [↺戻す]。
+  /// 左のクラスタは幅が足りなければ横スクロール、戻すは右端に固定(溢れ防止)。
+  Widget _operationRow() {
     return Row(
       children: [
-        if (c.isHit)
-          _chip(
-            '大当り — 復帰値入力中 ✕',
-            onTap: c.cancelHit,
-            active: true,
-          )
-        else
-          _chip('大当り', onTap: () { _haptic(); c.startHit(); }),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                if (c.isHit)
+                  _chip('大当り — 復帰値入力中 ✕',
+                      onTap: c.cancelHit,
+                      active: true,
+                      borderColor: const Color(0xB3E3B168))
+                else
+                  _chip('★ 大当り',
+                      onTap: () { _haptic(); c.startHit(); },
+                      borderColor: const Color(0x59E3B168),
+                      textColor: AppColors.hitText),
+                const SizedBox(width: 8),
+                _chip('⇄ 台移動',
+                    onTap: c.isHit ? null : _moveFlow,
+                    borderColor: const Color(0x5956D9F0),
+                    textColor: AppColors.accentSoft),
+                const SizedBox(width: 8),
+                _unitButton(),
+              ],
+            ),
+          ),
+        ),
         const SizedBox(width: 8),
-        _chip('台移動', onTap: c.isHit ? null : _moveFlow),
-        const Spacer(),
-        _chip('終了', onTap: c.isHit ? null : _endFlow),
+        _undoButton(),
       ],
     );
   }
 
-  Widget _chip(String label, {VoidCallback? onTap, bool active = false}) {
+  Widget _chip(String label,
+      {VoidCallback? onTap,
+      bool active = false,
+      Color? borderColor,
+      Color? textColor}) {
     final enabled = onTap != null;
     return Opacity(
       opacity: enabled ? 1 : 0.3,
@@ -542,28 +599,18 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           decoration: BoxDecoration(
             color: active ? const Color(0x33E3B168) : Colors.transparent,
             border: Border.all(
-                color: active
-                    ? const Color(0xB3E3B168)
-                    : const Color(0x1FFFFFFF)),
+                color: borderColor ?? const Color(0x1FFFFFFF)),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(label,
               style: AppTheme.sans(
                   size: 12,
                   weight: FontWeight.w500,
-                  color: active ? AppColors.hitText : AppColors.subtle)),
+                  color: active
+                      ? AppColors.hitText
+                      : (textColor ?? AppColors.subtle))),
         ),
       ),
-    );
-  }
-
-  Widget _unitRow() {
-    return Row(
-      children: [
-        _unitButton(),
-        const Spacer(),
-        _undoButton(),
-      ],
     );
   }
 
@@ -638,7 +685,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           border: Border.all(
               color: c.isError
                   ? const Color(0xCCF06A5D)
-                  : const Color(0x596BCBDD)),
+                  : const Color(0x5956D9F0)),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -695,7 +742,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                   weight: FontWeight.w600,
                   color: hit
                       ? const Color(0xB31C1206)
-                      : const Color(0xBF06171B)),
+                      : const Color(0xBF04262E)),
             ),
           ],
         ),

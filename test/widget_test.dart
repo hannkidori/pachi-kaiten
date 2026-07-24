@@ -380,7 +380,7 @@ void main() {
     await tester.pump();
 
     // 大当り → 復帰値入力状態
-    await tester.tap(find.text('大当り'));
+    await tester.tap(find.text('★ 大当り'));
     await tester.pump();
     expect(c.isHit, isTrue);
     expect(find.textContaining('復帰値入力中'), findsOneWidget);

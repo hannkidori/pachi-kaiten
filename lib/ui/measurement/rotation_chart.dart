@@ -4,9 +4,11 @@ import '../../logic/rotation_calc.dart';
 import '../../theme/app_theme.dart';
 
 // グラフの色ルール(確定済み区間はボーダー判定色)。
-// 判定ルール: ボーダー以上=ティール / 未満=赤。
-const Color chartBarAbove = Color(0x666BCBDD); // ボーダー以上(ティール)
+// 判定ルール: ボーダー以上=ティール / 未満=赤。最新(右端)の棒はシアン。
+const Color chartBarAbove = Color(0x6656D9F0); // ボーダー以上(ティール)
 const Color chartBarBelow = Color(0x52F06A5D); // ボーダー未満(赤)
+const Color chartBarLatest = AppColors.accent; // 最新の棒(シアン)
+const Color chartBarNeutral = Color(0x29FFFFFF); // クイック計測(判定なし)
 const Color chartLabelAbove = Color(0xFF5A7A82);
 const Color chartLabelBelow = AppColors.downDim;
 
@@ -46,8 +48,10 @@ class RotationChart extends StatelessWidget {
     // 各 count 区間を棒にする。
     final segs = stats.segments;
     final border = stats.border;
+    final hasBorder = stats.hasBorder;
     final barVals = segs.map((s) => s.ratePer1000).toList();
-    final maxV = [border + 3, 1.0, ...barVals].reduce((a, b) => a > b ? a : b);
+    final maxV = [if (hasBorder) border + 3, 1.0, ...barVals]
+        .reduce((a, b) => a > b ? a : b);
     final linePct = (border / maxV).clamp(0.0, 0.96);
 
     return LayoutBuilder(
@@ -78,12 +82,13 @@ class RotationChart extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('千円ごとの回転',
+                      Text('千円分ごとの回転',
                           style: AppTheme.sans(
                               size: 9, color: AppColors.mutedDark)),
-                      Text('B=${border.toStringAsFixed(1)}',
-                          style: AppTheme.mono(
-                              size: 9, color: AppColors.mutedDark)),
+                      if (hasBorder)
+                        Text('B=${border.toStringAsFixed(1)}',
+                            style: AppTheme.mono(
+                                size: 9, color: AppColors.mutedDark)),
                     ],
                   ),
                 ),
@@ -95,12 +100,14 @@ class RotationChart extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   // 破線: 可視全幅に固定(スクロールしない)。棒領域内の border 位置。
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: barArea * (1 - linePct),
-                    child: const _DashedLine(),
-                  ),
+                  // クイック計測(ボーダー未設定)では出さない。
+                  if (hasBorder)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      top: barArea * (1 - linePct),
+                      child: const _DashedLine(),
+                    ),
                   // 棒とラベルは横スクロール。棒の余地が無ければ描かない
                   // (「棒が無くラベルだけ」を避ける)。
                   if (segs.isNotEmpty && barArea > 0)
@@ -111,6 +118,7 @@ class RotationChart extends StatelessWidget {
                         segs: segs,
                         barVals: barVals,
                         border: border,
+                        hasBorder: hasBorder,
                         maxV: maxV,
                         barArea: barArea,
                         labelH: label,
@@ -132,18 +140,20 @@ class _Bars extends StatelessWidget {
   final List<RotationSegment> segs;
   final List<double> barVals;
   final double border;
+  final bool hasBorder;
   final double maxV;
   final double barArea;
   final double labelH;
   final double barGap;
 
-  /// 大当りマーカーの位置(その rebase までに現れた現金区間の本数)。
+  /// 大当りマーカーの位置(その rebase までに現れた区間の本数)。
   final List<int> markers;
 
   const _Bars({
     required this.segs,
     required this.barVals,
     required this.border,
+    required this.hasBorder,
     required this.maxV,
     required this.barArea,
     required this.labelH,
@@ -178,7 +188,7 @@ class _Bars extends StatelessWidget {
         }
       }
       if (p < segs.length) {
-        add(_bar(barVals[p]), _label(p));
+        add(_bar(barVals[p], isLatest: p == segs.length - 1), _label(p));
       }
     }
 
@@ -202,29 +212,34 @@ class _Bars extends StatelessWidget {
     );
   }
 
-  Widget _bar(double val) {
+  Widget _bar(double val, {required bool isLatest}) {
     final h = (val / maxV * barArea).clamp(0.0, barArea);
+    // 最新の棒は常にシアン。それ以外は hasBorder なら判定色、クイックはニュートラル。
+    final Color color = isLatest
+        ? chartBarLatest
+        : (hasBorder ? chartBarColor(val, border) : chartBarNeutral);
     return Container(
       width: _barW,
       height: h,
       decoration: BoxDecoration(
-        color: chartBarColor(val, border),
+        color: color,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
       ),
     );
   }
 
   Widget _label(int i) {
+    // ラベル色: hasBorder なら判定色、クイックはニュートラル。
+    final color = hasBorder
+        ? chartLabelColor(barVals[i], border)
+        : AppColors.mutedDark;
     return SizedBox(
       width: _barW,
       child: Text(
         '${segs[i].rotations}',
         textAlign: TextAlign.center,
         maxLines: 1,
-        style: AppTheme.mono(
-          size: 10,
-          color: chartLabelColor(barVals[i], border),
-        ),
+        style: AppTheme.mono(size: 10, color: color),
       ),
     );
   }
