@@ -4,6 +4,7 @@ import '../../models/trace.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../../util/format.dart';
+import '../widgets/glow_background.dart';
 
 /// 足跡。セッション終了時に自動保存された 1 行レコードの時系列リスト(新しい順)。
 /// 集計・グラフ・フィルタ・編集は一切なし。行タップで削除のみ。
@@ -106,7 +107,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
+      body: GlowBackground.list(
+        child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -120,6 +122,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

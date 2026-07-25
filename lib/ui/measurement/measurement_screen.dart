@@ -13,6 +13,7 @@ import '../../models/session.dart';
 import '../start/quick_start_screen.dart';
 import '../start/start_screen.dart';
 import '../widgets/counter_field.dart';
+import '../widgets/glow_background.dart';
 import '../widgets/numpad.dart';
 import 'end_sheets.dart';
 import 'rotation_chart.dart';
@@ -276,7 +277,8 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
+      body: GlowBackground.measurement(
+        child: SafeArea(
         child: ListenableBuilder(
           listenable: c,
           builder: (context, _) {
@@ -316,6 +318,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             );
           },
         ),
+      ),
       ),
     );
   }

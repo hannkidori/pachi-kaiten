@@ -15,6 +15,7 @@ import '../measurement/measurement_screen.dart';
 import '../settings/settings_screen.dart';
 import '../start/quick_start_screen.dart';
 import '../start/start_screen.dart';
+import '../widgets/glow_background.dart';
 
 /// ホーム。計測開始までの通過点。計測中セッションがあれば復帰カードを最優先表示し、
 /// なければ前回比ヒーロー + 円形「計測スタート」を出す。
@@ -176,7 +177,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
+      body: GlowBackground.home(
+        child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _loading
@@ -196,6 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
         ),
+      ),
       ),
     );
   }

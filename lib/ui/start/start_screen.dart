@@ -6,6 +6,7 @@ import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/counter_field.dart';
 import '../widgets/dashed_border.dart';
+import '../widgets/glow_background.dart';
 import '../widgets/numpad.dart';
 import 'machine_sheets.dart';
 
@@ -148,7 +149,8 @@ class _StartScreenState extends State<StartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
+      body: GlowBackground.start(
+        child: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -163,6 +165,7 @@ class _StartScreenState extends State<StartScreen> {
                   _startButton(),
                 ],
               ),
+      ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../../models/machine.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../start/machine_sheets.dart';
+import '../widgets/glow_background.dart';
 
 /// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止 / 機種の編集・削除 /
 /// エクスポート。店舗プロファイルと収支インポートは廃止した。
@@ -99,7 +100,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
+      body: GlowBackground.list(
+        child: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
@@ -138,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
+      ),
       ),
     );
   }
