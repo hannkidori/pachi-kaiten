@@ -303,17 +303,21 @@ class _StartScreenState extends State<StartScreen> {
     final border = m.borderFor(_ballPrice);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _machine = m),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0x1456D9F0) : Colors.transparent,
-            border: Border.all(
-                color: selected ? const Color(0x7356D9F0) : AppColors.border),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _machine = m),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(
+                color: selected ? const Color(0x1456D9F0) : Colors.transparent,
+                border: Border.all(
+                    color:
+                        selected ? const Color(0x7356D9F0) : AppColors.border),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
             children: [
               if (selected) ...[
                 Container(
@@ -360,9 +364,24 @@ class _StartScreenState extends State<StartScreen> {
                         color: border == null
                             ? AppColors.faint
                             : AppColors.muted)),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
+          // 選択したが現在の貸玉スロットが未登録: その場入力を促すアンバー注記。
+          if (selected && border == null)
+            GestureDetector(
+              onTap: () => _editBorder(m),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(4, 6, 4, 2),
+                child: Text(
+                  '${ballLabel(_ballPrice)}のボーダー未登録 — タップして入力',
+                  style: AppTheme.sans(size: 10.5, color: AppColors.hit),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

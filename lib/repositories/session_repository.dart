@@ -16,8 +16,12 @@ class SessionRepository {
 
   Future<void> update(Session session) async {
     assert(session.id != null, 'update には id が必要');
-    await db.update('sessions', session.toMap(),
-        where: 'id = ?', whereArgs: [session.id]);
+    await db.update(
+      'sessions',
+      session.toMap(),
+      where: 'id = ?',
+      whereArgs: [session.id],
+    );
   }
 
   Future<Session?> byId(int id) async {
