@@ -88,6 +88,20 @@ void main() {
       expect(all.single.evYen, isNull);
     });
 
+    test('終了3経路(終了/台移動/復帰終了)は同じ endAndLog を通り各1件残す', () async {
+      // UI 上の 3 経路(終了ボタン / 台移動 / 復帰カード終了)は全て endAndLog に
+      // 集約される。3 セッションを順に終了すると足跡が 3 件たまる。
+      for (var i = 0; i < 3; i++) {
+        final s =
+            await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
+        await service.recordCount(s, counter: 20 + i);
+        final t = await service.endAndLog(s, _a);
+        expect(t, isNotNull);
+      }
+      expect((await traceRepo.allDesc()).length, 3);
+      expect(await sessionRepo.active(), isNull); // 進行中は残らない
+    });
+
     test('count 0件のセッションは足跡を残さず破棄される', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       // count を 1 件も打たずに終了。
