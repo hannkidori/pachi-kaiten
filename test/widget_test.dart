@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pachi_kaiten/logic/anomaly.dart';
 import 'package:pachi_kaiten/logic/rotation_calc.dart';
 import 'package:pachi_kaiten/logic/session_service.dart';
@@ -26,8 +25,6 @@ const _machine = Machine(
 );
 
 void main() {
-  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
-
   late Database db;
   late SessionService service;
   late EntryRepository entryRepo;

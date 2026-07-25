@@ -106,10 +106,25 @@ class CounterField extends StatelessWidget {
       children: [
         Text('前回',
             style: AppTheme.sans(
-                size: 9, color: AppColors.muted, letterSpacing: 0.1 * 9)),
-        const SizedBox(height: 3),
-        Text(prevCounter?.toString() ?? '—',
-            style: AppTheme.mono(size: 16, color: AppColors.mutedDark)),
+                size: 9, color: AppColors.mutedDark, letterSpacing: 0.16 * 9)),
+        const SizedBox(height: 5),
+        // 数字は 26px(デザイン準拠)。大きな文字設定でも枠を超えないよう高さを
+        // 上限で固定し FittedBox で縮小(通常は縮まない)。
+        SizedBox(
+          height: 30,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(prevCounter?.toString() ?? '—',
+                style: AppTheme.mono(
+                    size: 26,
+                    weight: FontWeight.w600,
+                    height: 1.0,
+                    color: prevCounter == null
+                        ? AppColors.faint
+                        : const Color(0xFFA2ABB4))),
+          ),
+        ),
       ],
     );
   }

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// 確定デザイン(Claude Design ハンドオフ v2)から抽出したカラートークン。
-/// ダークテーマのみ。数字は等幅(IBM Plex Mono)、和文は IBM Plex Sans JP。
+/// ダークテーマのみ。数字は等幅(IBM Plex Mono)、和文は Noto Sans JP。
 class AppColors {
   AppColors._();
 
@@ -62,7 +61,14 @@ class AppColors {
 class AppTheme {
   AppTheme._();
 
-  /// 等幅(数字用)。google_fonts で IBM Plex Mono。
+  /// フォントファミリ(pubspec に同梱。通信ゼロなのでランタイム取得はしない)。
+  static const fontMono = 'IBM Plex Mono'; // 数字・英字(等幅)
+  static const fontJp = 'Noto Sans JP'; // 日本語
+
+  /// 数字・英字が中国語字形へ落ちないよう、日本語は必ず [fontJp] に解決する。
+  static const _jpFallback = <String>[fontJp];
+
+  /// 等幅(数字用)。IBM Plex Mono。日本語混在時は Noto Sans JP にフォールバック。
   static TextStyle mono({
     double size = 14,
     FontWeight weight = FontWeight.w500,
@@ -70,7 +76,9 @@ class AppTheme {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.ibmPlexMono(
+    return TextStyle(
+      fontFamily: fontMono,
+      fontFamilyFallback: _jpFallback,
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -79,7 +87,7 @@ class AppTheme {
     );
   }
 
-  /// 和文用。IBM Plex Sans JP。
+  /// 和文用。Noto Sans JP。
   static TextStyle sans({
     double size = 13,
     FontWeight weight = FontWeight.w400,
@@ -87,7 +95,8 @@ class AppTheme {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.ibmPlexSansJp(
+    return TextStyle(
+      fontFamily: fontJp,
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -105,8 +114,12 @@ class AppTheme {
         primary: AppColors.accent,
         secondary: AppColors.accentDeep,
       ),
-      textTheme: GoogleFonts.ibmPlexSansJpTextTheme(base.textTheme)
-          .apply(bodyColor: AppColors.text, displayColor: AppColors.text),
+      // 既定フォントも日本語(Noto Sans JP)にし、素の Text も中国語字形へ落ちない。
+      textTheme: base.textTheme.apply(
+        fontFamily: fontJp,
+        bodyColor: AppColors.text,
+        displayColor: AppColors.text,
+      ),
       splashFactory: InkRipple.splashFactory,
     );
   }

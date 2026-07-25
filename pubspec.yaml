@@ -53,9 +53,6 @@ dependencies:
   # 日付・数値フォーマット
   intl: ^0.20.2
 
-  # Monospace tabular figures
-  google_fonts: ^6.2.1
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -80,6 +77,24 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # フォントはアセット同梱(通信ゼロ方針。google_fonts のランタイム取得は使わない)。
+  # 数字・英字=IBM Plex Mono、日本語=Noto Sans JP。mono スタイル中の日本語は
+  # fontFamilyFallback で Noto Sans JP に解決し、システムの中国語字形へ落ちないようにする。
+  fonts:
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700
+    # 可変フォント 1 枚で全ウェイト(100–900)をカバー(apk サイズを抑える)。
+    - family: Noto Sans JP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-VariableFont_wght.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
