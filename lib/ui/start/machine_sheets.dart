@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/machine.dart';
@@ -304,8 +306,13 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
   late final TextEditingController _b1 =
       TextEditingController(text: widget.machine.border1?.toString() ?? '');
 
+  // 「この機種を削除」の 2 度タップ確認。1 回目で arm → 2.6s で解除。
+  bool _deleteArmed = false;
+  Timer? _deleteTimer;
+
   @override
   void dispose() {
+    _deleteTimer?.cancel();
     _name.dispose();
     _b4.dispose();
     _b1.dispose();
@@ -340,32 +347,18 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
     Navigator.of(context).pop(MachineEditResult(saved: saved));
   }
 
-  Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('この機種を削除しますか?',
-            style: AppTheme.sans(size: 15, weight: FontWeight.w700)),
-        content: Text('${widget.machine.name} を機種マスタから削除します。足跡には影響しません。',
-            style: AppTheme.sans(size: 13, color: AppColors.textStrong)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('やめる',
-                style: AppTheme.sans(size: 13, color: AppColors.textDim)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('削除する',
-                style: AppTheme.sans(size: 13, color: AppColors.down)),
-          ),
-        ],
-      ),
-    );
-    if (ok == true && mounted) {
-      Navigator.of(context).pop(const MachineEditResult(deleted: true));
+  /// 削除 = 2 度タップ確認。1 回目は arm するだけ、2 回目で実行。
+  void _tapDelete() {
+    if (!_deleteArmed) {
+      setState(() => _deleteArmed = true);
+      _deleteTimer?.cancel();
+      _deleteTimer = Timer(const Duration(milliseconds: 2600), () {
+        if (mounted) setState(() => _deleteArmed = false);
+      });
+      return;
     }
+    _deleteTimer?.cancel();
+    Navigator.of(context).pop(const MachineEditResult(deleted: true));
   }
 
   Widget _borderField(String label, TextEditingController c) {
@@ -425,18 +418,26 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
             _primaryButton('保存', _valid ? _save : null),
             const SizedBox(height: 10),
             GestureDetector(
-              onTap: _delete,
+              onTap: _tapDelete,
+              behavior: HitTestBehavior.opaque,
               child: Container(
                 height: 48,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
+                  color:
+                      _deleteArmed ? const Color(0x1FF06A5D) : Colors.transparent,
                   border: Border.all(color: const Color(0x40F06A5D)),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('この機種を削除',
+                child: Text(_deleteArmed ? 'もう一度タップで削除' : 'この機種を削除',
                     style: AppTheme.sans(
                         size: 14, weight: FontWeight.w600, color: AppColors.down)),
               ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text('削除しても足跡は消えません',
+                  style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
             ),
           ],
         ),
