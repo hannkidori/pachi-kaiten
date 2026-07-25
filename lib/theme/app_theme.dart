@@ -68,6 +68,10 @@ class AppTheme {
   /// 数字・英字が中国語字形へ落ちないよう、日本語は必ず [fontJp] に解決する。
   static const _jpFallback = <String>[fontJp];
 
+  /// 和文フォントが持たない記号(↺ など)を IBM Plex Mono で補うフォールバック。
+  /// 日本語は [fontJp] が全て持つため mono へ落ちることはない。
+  static const _monoFallback = <String>[fontMono];
+
   /// 等幅(数字用)。IBM Plex Mono。日本語混在時は Noto Sans JP にフォールバック。
   static TextStyle mono({
     double size = 14,
@@ -97,6 +101,7 @@ class AppTheme {
   }) {
     return TextStyle(
       fontFamily: fontJp,
+      fontFamilyFallback: _monoFallback,
       fontSize: size,
       fontWeight: weight,
       color: color,

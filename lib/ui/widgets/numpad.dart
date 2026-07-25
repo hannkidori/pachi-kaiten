@@ -51,14 +51,18 @@ class Numpad extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,
-        child: Text(
-          label,
-          style: AppTheme.mono(
-            size: label == '00' ? 18 : (isBack ? 19 : 24),
-            weight: FontWeight.w500,
-            color: isBack ? AppColors.muted : AppColors.text,
-          ),
-        ),
+        // ⌫(U+232B)は同梱フォントに無いため Material アイコンで描画する。
+        child: isBack
+            ? const Icon(Icons.backspace_outlined,
+                size: 20, color: AppColors.muted)
+            : Text(
+                label,
+                style: AppTheme.mono(
+                  size: label == '00' ? 18 : 24,
+                  weight: FontWeight.w500,
+                  color: AppColors.text,
+                ),
+              ),
       ),
     );
   }

@@ -659,7 +659,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             child: Row(
               children: [
                 if (c.isHit)
-                  _chip('大当り — 復帰値入力中 ✕',
+                  _chip('大当り — 復帰値入力中 ×',
                       onTap: c.cancelHit,
                       active: true,
                       borderColor: const Color(0xB3E3B168))
@@ -669,8 +669,8 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                       borderColor: const Color(0x59E3B168),
                       textColor: AppColors.hitText),
                 const SizedBox(width: 8),
-                // リセット = 次の台へ急ぐ出口。↺系だが「1つ戻す」と造形・距離で区別。
-                _chip('⟳ リセット',
+                // リセット = 次の台へ急ぐ出口。⊘(禁止/クリア系)で「1つ戻す」と区別。
+                _chip('⊘ リセット',
                     onTap: c.isHit ? null : _resetFlow,
                     borderColor: const Color(0x5956D9F0),
                     textColor: AppColors.accentSoft),
