@@ -441,6 +441,19 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         children: [
           Row(
             children: [
+              // ブランド(シアン・10px)｜区切り線｜機種名 … 終了。クイックも同じ。
+              Text('パチ回転計',
+                  style: AppTheme.mono(
+                      size: 10,
+                      weight: FontWeight.w600,
+                      color: AppColors.accent,
+                      letterSpacing: 0.12 * 10)),
+              Container(
+                width: 1,
+                height: 11,
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                color: AppColors.border,
+              ),
               Expanded(
                 child: Text(
                   c.isQuick ? '計測' : c.machine!.name,
