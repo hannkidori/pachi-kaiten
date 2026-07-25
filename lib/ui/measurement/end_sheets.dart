@@ -21,60 +21,60 @@ Future<T?> _showSheet<T>(BuildContext context, Widget child) {
   );
 }
 
-Widget _closeButton(BuildContext context) => GestureDetector(
-      onTap: () => Navigator.pop(context),
-      child: Container(
-        width: 32,
-        height: 32,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0x1FFFFFFF)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text('✕', style: AppTheme.sans(size: 14, color: AppColors.muted)),
-      ),
-    );
 
-// ---------------- 台移動の確認 ----------------
-Future<bool?> showMoveConfirm(
+// ---------------- リセット(次の台へ急ぐ出口) ----------------
+
+/// リセットシートの選択。
+/// - [sameCondition]: 同条件(同 machine_id / クイックなら null)で新セッション。
+/// - [changeMachine]: 機種を変えて(機種選択画面へ)。
+/// - [quick]: 機種なしで(クイックとして)。
+enum ResetChoice { sameCondition, changeMachine, quick }
+
+/// リセットシート。回収額は一切聞かない(記録は「終了」から)。
+/// シート外タップ = キャンセル(null)。確認ダイアログは挟まない。
+Future<ResetChoice?> showResetSheet(
   BuildContext context, {
   required String machineName,
-  required String investK,
-  required int totalSpins,
+  required bool isQuick,
 }) {
-  return _showSheet<bool>(
+  return _showSheet<ResetChoice>(
     context,
     Container(
       decoration: _sheetDeco(),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 26),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('台移動しますか?',
-              style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
+          // 主役: 最大。同条件でリセット。
+          _gradientButton(
+            isQuick ? 'カウントをリセット' : '$machineNameのままリセット',
+            height: 58,
+            onTap: () => Navigator.pop(context, ResetChoice.sameCondition),
+          ),
           const SizedBox(height: 10),
-          Text('現在のセッションを終了して足跡に記録し、次の台の計測を開始します。',
-              style:
-                  AppTheme.sans(size: 12, color: AppColors.muted, height: 1.7)),
-          const SizedBox(height: 6),
-          Text('$machineName ・ 消化 $investK分 ・ $totalSpins回転',
-              style: AppTheme.mono(size: 12, color: AppColors.textStrong)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 13,
-                child: _lightButton('台移動する',
-                    onTap: () => Navigator.pop(context, true)),
+          // 従: 機種を変えて。
+          _outlineButton('機種を変えてリセット',
+              height: 50,
+              onTap: () => Navigator.pop(context, ResetChoice.changeMachine)),
+          // 従(小): 機種なしで。クイック中は主役と同義のため出さない。
+          if (!isQuick) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => Navigator.pop(context, ResetChoice.quick),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('機種なしでリセット',
+                    textAlign: TextAlign.center,
+                    style: AppTheme.sans(size: 12.5, color: AppColors.textDim)),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 10,
-                child: _outlineButton('続ける',
-                    onTap: () => Navigator.pop(context, false)),
-              ),
-            ],
+            ),
+          ],
+          const SizedBox(height: 12),
+          Center(
+            child: Text('ここまでの計測は足跡に残ります',
+                style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
           ),
         ],
       ),
@@ -93,7 +93,6 @@ class RecoveryResult {
 
 Future<RecoveryResult?> showRecoverySheet(
   BuildContext context, {
-  required bool forMove,
   required String machineName,
   required String rateStr,
   required int totalSpins,
@@ -101,7 +100,6 @@ Future<RecoveryResult?> showRecoverySheet(
   return _showSheet<RecoveryResult>(
     context,
     _RecoverySheet(
-      forMove: forMove,
       machineName: machineName,
       rateStr: rateStr,
       totalSpins: totalSpins,
@@ -110,12 +108,10 @@ Future<RecoveryResult?> showRecoverySheet(
 }
 
 class _RecoverySheet extends StatefulWidget {
-  final bool forMove;
   final String machineName;
   final String rateStr;
   final int totalSpins;
   const _RecoverySheet({
-    required this.forMove,
     required this.machineName,
     required this.rateStr,
     required this.totalSpins,
@@ -133,8 +129,7 @@ class _RecoverySheetState extends State<_RecoverySheet> {
   Widget build(BuildContext context) {
     final hasInput = _typed.isNotEmpty;
     // 主役 CTA。回収額を入力していればラベルに (＋回収額を記録) を足す。
-    final base = widget.forMove ? '終了して移動' : '終了する';
-    final ctaLabel = hasInput ? '$base(＋回収額を記録)' : base;
+    final ctaLabel = hasInput ? '終了する(＋回収額を記録)' : '終了する';
     return Container(
       decoration: _sheetDeco(),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -212,208 +207,17 @@ class _RecoverySheetState extends State<_RecoverySheet> {
   }
 }
 
-// ---------------- 機種選択(台移動時) ----------------
-
-/// 機種選択の結果。[register] が true なら「新しい機種を登録」を要求。
-/// それ以外は [machine] が選択された機種。
-class MachinePick {
-  final Machine? machine;
-  final bool register;
-  const MachinePick.select(Machine this.machine) : register = false;
-  const MachinePick.registerNew()
-      : machine = null,
-        register = true;
-}
-
-Future<MachinePick?> showMachinePick(
-  BuildContext context, {
-  required List<Machine> machines,
-  required Machine? sameMachine, // null=クイック計測からの移動(同じ機種なし)
-  required double ballPrice,
-}) {
-  return _showSheet<MachinePick>(
-    context,
-    _MachinePickSheet(
-      machines: machines,
-      sameMachine: sameMachine,
-      ballPrice: ballPrice,
-    ),
-  );
-}
-
-class _MachinePickSheet extends StatefulWidget {
-  final List<Machine> machines;
-  final Machine? sameMachine;
-  final double ballPrice;
-  const _MachinePickSheet({
-    required this.machines,
-    required this.sameMachine,
-    required this.ballPrice,
-  });
-
-  @override
-  State<_MachinePickSheet> createState() => _MachinePickSheetState();
-}
-
-class _MachinePickSheetState extends State<_MachinePickSheet> {
-  String _query = '';
-
-  @override
-  Widget build(BuildContext context) {
-    final q = _query.trim().toLowerCase();
-    final list = q.isEmpty
-        ? widget.machines
-        : widget.machines
-            .where((m) => m.name.toLowerCase().contains(q))
-            .toList();
-    return Container(
-      decoration: _sheetDeco(),
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Text('次の台 — 機種を選択',
-                  style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
-              const Spacer(),
-              _closeButton(context),
-            ],
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            style: AppTheme.sans(size: 14),
-            cursorColor: AppColors.accent,
-            onChanged: (v) => setState(() => _query = v),
-            decoration: InputDecoration(
-              isDense: true,
-              prefixIcon:
-                  const Icon(Icons.search, size: 18, color: AppColors.muted),
-              hintText: '機種名を検索…',
-              hintStyle: AppTheme.sans(size: 13, color: AppColors.mutedDark),
-              filled: true,
-              fillColor: AppColors.surfaceAlt,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9),
-                borderSide: const BorderSide(color: Color(0x5956D9F0)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (widget.sameMachine != null) ...[
-            _sameMachineRow(widget.sameMachine!),
-            const SizedBox(height: 8),
-          ],
-          _registerRow(),
-          const SizedBox(height: 8),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, i) => _machineRow(list[i]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sameMachineRow(Machine sameMachine) {
-    return GestureDetector(
-      onTap: () =>
-          Navigator.pop(context, MachinePick.select(sameMachine)),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0x1456D9F0),
-          border: Border.all(color: const Color(0x7356D9F0)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(sameMachine.name,
-                style: AppTheme.sans(size: 13, weight: FontWeight.w500)),
-            const SizedBox(height: 2),
-            Text('同じ機種 — ワンタップで開始',
-                style: AppTheme.sans(size: 10.5, color: AppColors.accent)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _registerRow() {
-    return GestureDetector(
-      onTap: () => Navigator.pop(context, const MachinePick.registerNew()),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0x396BCBDD)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.add, size: 16, color: AppColors.accent),
-            const SizedBox(width: 8),
-            Text('新しい機種を登録',
-                style: AppTheme.sans(
-                    size: 12.5,
-                    weight: FontWeight.w600,
-                    color: AppColors.accentSoft)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _machineRow(Machine m) {
-    final border = m.borderFor(widget.ballPrice);
-    return GestureDetector(
-      onTap: () => Navigator.pop(context, MachinePick.select(m)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(m.name,
-                  style: AppTheme.sans(size: 13),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 8),
-            Text(border == null ? '未設定' : 'B${border.toStringAsFixed(1)}',
-                style: AppTheme.mono(
-                    size: 11,
-                    color:
-                        border == null ? AppColors.mutedDark : AppColors.muted)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------- 新カウンタ入力 ----------------
+// ---------------- 新カウンタ入力(リセットの同条件) ----------------
+/// [machine] が null ならクイック計測の打ち始め。
 Future<int?> showNewCounterSheet(
   BuildContext context, {
-  required Machine machine,
+  required Machine? machine,
 }) {
   return _showSheet<int>(context, _NewCounterSheet(machine: machine));
 }
 
 class _NewCounterSheet extends StatefulWidget {
-  final Machine machine;
+  final Machine? machine;
   const _NewCounterSheet({required this.machine});
 
   @override
@@ -432,8 +236,13 @@ class _NewCounterSheetState extends State<_NewCounterSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.machine.name,
-              style: AppTheme.sans(size: 13, weight: FontWeight.w500)),
+          Text(widget.machine?.name ?? '計測',
+              style: AppTheme.sans(
+                  size: 13,
+                  weight: FontWeight.w500,
+                  color: widget.machine == null
+                      ? AppColors.muted
+                      : AppColors.text)),
           const SizedBox(height: 8),
           CounterField(
             typed: _typed,
@@ -488,24 +297,6 @@ Widget _gradientButton(String label,
       child: Text(label,
           style: AppTheme.sans(
               size: 16, weight: FontWeight.w700, color: AppColors.accentInk)),
-    ),
-  );
-}
-
-Widget _lightButton(String label,
-    {required VoidCallback onTap, double height = 50}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: height,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.light,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(label,
-          style: AppTheme.sans(
-              size: 15, weight: FontWeight.w700, color: AppColors.lightInk)),
     ),
   );
 }

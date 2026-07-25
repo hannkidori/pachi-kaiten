@@ -11,6 +11,7 @@ import 'package:pachi_kaiten/repositories/trace_repository.dart';
 import 'package:pachi_kaiten/services/app_services.dart';
 import 'package:pachi_kaiten/state/measurement_controller.dart';
 import 'package:pachi_kaiten/theme/app_theme.dart';
+import 'package:pachi_kaiten/ui/measurement/end_sheets.dart';
 import 'package:pachi_kaiten/ui/measurement/measurement_screen.dart';
 import 'package:pachi_kaiten/ui/measurement/rotation_chart.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -411,5 +412,39 @@ void main() {
       await c.load();
     });
     await expectHitInputReflects(tester, c);
+  });
+
+  // ---- リセットシートの選択肢表示(DB非依存なので通常の testWidgets) ----
+  Future<void> openResetSheet(WidgetTester tester, bool isQuick) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Builder(
+          builder: (context) => Center(
+            child: TextButton(
+              onPressed: () => showResetSheet(context,
+                  machineName: 'P大海物語5', isQuick: isQuick),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('リセットシート: 機種計測中は3択(主役=機種名のままリセット)', (tester) async {
+    await openResetSheet(tester, false);
+    expect(find.text('P大海物語5のままリセット'), findsOneWidget); // 主役
+    expect(find.text('機種を変えてリセット'), findsOneWidget); // 従
+    expect(find.text('機種なしでリセット'), findsOneWidget); // 従(小)
+    expect(find.text('ここまでの計測は足跡に残ります'), findsOneWidget);
+  });
+
+  testWidgets('リセットシート: クイック中は2択(「機種なしでリセット」を出さない)', (tester) async {
+    await openResetSheet(tester, true);
+    expect(find.text('カウントをリセット'), findsOneWidget); // 主役
+    expect(find.text('機種を変えてリセット'), findsOneWidget); // 従
+    expect(find.text('機種なしでリセット'), findsNothing); // 主役と同義のため非表示
   });
 }

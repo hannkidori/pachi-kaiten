@@ -9,7 +9,9 @@ import '../../services/app_services.dart';
 import '../../state/measurement_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../util/format.dart';
-import '../start/machine_sheets.dart';
+import '../../models/session.dart';
+import '../start/quick_start_screen.dart';
+import '../start/start_screen.dart';
 import '../widgets/counter_field.dart';
 import '../widgets/numpad.dart';
 import 'end_sheets.dart';
@@ -160,9 +162,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   void _haptic() => HapticFeedback.selectionClick();
 
-  String _stamp() => DateTime.now().toIso8601String();
-
-  // ---------- 終了 / 台移動フロー ----------
+  // ---------- 終了 / リセットフロー ----------
 
   void _backHome() {
     if (mounted) Navigator.of(context).pop();
@@ -175,7 +175,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final st = c.stats;
     final result = await showRecoverySheet(
       context,
-      forMove: false,
       machineName: c.machine?.name ?? '計測',
       rateStr: fmtRate(st.rotationRate),
       totalSpins: st.totalRotations,
@@ -189,74 +188,76 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     _backHome();
   }
 
-  /// 台移動 → 確認 → 任意回収額 → 足跡保存 → 機種選択(登録/スロット入力対応)
-  /// → 新カウンタ → 新セッションに差し替え。
-  Future<void> _moveFlow() async {
+  /// リセット → シートで 3 択 → 足跡を自動保存(回収額は聞かない)→ 新セッションへ。
+  /// 実戦での「次の台へ急ぐ」出口。丁寧な出口は「終了」が担う。
+  /// count 0 件のセッションは endAndLog 側で足跡を残さず破棄される。
+  Future<void> _resetFlow() async {
     if (_flowBusy || c.isHit) return;
-    final st = c.stats;
-    final go = await showMoveConfirm(
+    final choice = await showResetSheet(
       context,
       machineName: c.machine?.name ?? '計測',
-      investK: fmtK(st.consumedYen),
-      totalSpins: st.totalRotations,
+      isQuick: c.isQuick,
     );
-    if (go != true || !mounted) return;
-    final result = await showRecoverySheet(
-      context,
-      forMove: true,
-      machineName: c.machine?.name ?? '計測',
-      rateStr: fmtRate(st.rotationRate),
-      totalSpins: st.totalRotations,
-    );
-    if (result == null || !mounted) return;
+    if (choice == null || !mounted) return; // シート外タップ = キャンセル
 
     _flowBusy = true;
     final ballPrice = c.session.ballPrice;
     final addUnit = c.session.addUnit;
-    await s.sessionService
-        .endAndLog(c.session, c.machine, recovery: result.recovery);
-
-    final machines = await s.machines.all();
+    final sameMachine = c.machine;
+    // リセット経路は回収額を一切聞かない(記録したい人は「終了」から)。
+    await s.sessionService.endAndLog(c.session, c.machine, recovery: null);
     if (!mounted) {
       _flowBusy = false;
       return;
     }
-    final pick = await showMachinePick(
-      context,
-      machines: machines,
-      sameMachine: c.machine,
-      ballPrice: ballPrice,
-    );
-    if (pick == null || !mounted) {
-      _flowBusy = false;
-      _backHome();
-      return;
+
+    Session? newSession;
+    Machine? newMachine;
+    switch (choice) {
+      case ResetChoice.sameCondition:
+        // 同条件(同 machine_id / クイックなら null のまま)で新セッション。
+        final counter =
+            await showNewCounterSheet(context, machine: sameMachine);
+        if (counter == null || !mounted) {
+          _flowBusy = false;
+          _backHome();
+          return;
+        }
+        newSession = await s.sessionService.start(
+          machine: sameMachine,
+          ballPrice: ballPrice,
+          startCounter: counter,
+          addUnit: addUnit,
+        );
+        newMachine = sameMachine;
+      case ResetChoice.changeMachine:
+        final result = await Navigator.of(context).push<StartResult>(
+          MaterialPageRoute(builder: (_) => StartScreen(services: s)),
+        );
+        if (result == null || !mounted) {
+          _flowBusy = false;
+          _backHome();
+          return;
+        }
+        newSession = result.session;
+        newMachine = result.machine;
+      case ResetChoice.quick:
+        final result = await Navigator.of(context).push<StartResult>(
+          MaterialPageRoute(builder: (_) => QuickStartScreen(services: s)),
+        );
+        if (result == null || !mounted) {
+          _flowBusy = false;
+          _backHome();
+          return;
+        }
+        newSession = result.session;
+        newMachine = result.machine;
     }
 
-    final picked = await _resolvePickedMachine(pick, ballPrice);
-    if (picked == null || !mounted) {
-      _flowBusy = false;
-      _backHome();
-      return;
-    }
-
-    final counter = await showNewCounterSheet(context, machine: picked);
-    if (counter == null || !mounted) {
-      _flowBusy = false;
-      _backHome();
-      return;
-    }
-
-    final newSession = await s.sessionService.start(
-      machine: picked,
-      ballPrice: ballPrice,
-      startCounter: counter,
-      addUnit: addUnit,
-    );
     final nc = MeasurementController(
       service: s.sessionService,
       session: newSession,
-      machine: picked,
+      machine: newMachine,
     );
     await nc.load();
     if (!mounted) {
@@ -269,32 +270,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     _lastLen = -1;
     _flowBusy = false;
     WidgetsBinding.instance.addPostFrameCallback((_) => _snapChart());
-  }
-
-  /// 機種選択結果を「開始できる Machine」に解決する。
-  /// 新規登録 or 該当スロット未入力なら、その場で入力を求めて保存する(育つマスタ)。
-  Future<Machine?> _resolvePickedMachine(
-      MachinePick pick, double ballPrice) async {
-    if (pick.register) {
-      final reg = await showRegisterMachine(context, ballPrice: ballPrice);
-      if (reg == null) return null;
-      final base = Machine(name: reg.name, updatedAt: _stamp());
-      return s.machines
-          .insert(applyBorder(base, ballPrice, reg.border, _stamp()));
-    }
-    var picked = pick.machine!;
-    if (picked.borderFor(ballPrice) == null) {
-      final entered = await showBorderPrompt(
-        context,
-        machineName: picked.name,
-        ballPrice: ballPrice,
-        current: null,
-      );
-      if (entered == null) return null;
-      picked = applyBorder(picked, ballPrice, entered, _stamp());
-      await s.machines.update(picked);
-    }
-    return picked;
   }
 
   @override
@@ -691,8 +666,9 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                       borderColor: const Color(0x59E3B168),
                       textColor: AppColors.hitText),
                 const SizedBox(width: 8),
-                _chip('⇄ 台移動',
-                    onTap: c.isHit ? null : _moveFlow,
+                // リセット = 次の台へ急ぐ出口。↺系だが「1つ戻す」と造形・距離で区別。
+                _chip('⟳ リセット',
+                    onTap: c.isHit ? null : _resetFlow,
                     borderColor: const Color(0x5956D9F0),
                     textColor: AppColors.accentSoft),
                 const SizedBox(width: 8),
