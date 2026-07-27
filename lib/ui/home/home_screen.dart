@@ -205,17 +205,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---------- タイトル ----------
   Widget _appTitle() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text('パチ回転計',
-            style: AppTheme.mono(
-                size: 14, weight: FontWeight.w600, letterSpacing: 0.34 * 14)),
-        const SizedBox(height: 3),
-        Text('SPIN RATE COUNTER',
-            style: AppTheme.mono(
-                size: 9, color: AppColors.mutedDark, letterSpacing: 0.24 * 9)),
-      ],
+    return Center(
+      child: Text('パチ回転計',
+          style: AppTheme.mono(
+              size: 14, weight: FontWeight.w600, letterSpacing: 0.34 * 14)),
     );
   }
 
