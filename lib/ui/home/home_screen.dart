@@ -290,15 +290,14 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('計測を終えると、ここに足跡が残ります',
                 style: AppTheme.sans(size: 12, color: AppColors.mutedDark)),
           ] else ...[
-            Text(t.machineName ?? '計測',
-                style: AppTheme.sans(
-                    size: 14,
-                    color: t.machineName == null
-                        ? AppColors.muted
-                        : AppColors.textStrong),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 6),
+            // クイック計測(機種名なし)は機種名の行を出さない。
+            if (t.machineName != null) ...[
+              Text(t.machineName!,
+                  style: AppTheme.sans(size: 14, color: AppColors.textStrong),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.baseline,

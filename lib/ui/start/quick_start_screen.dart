@@ -132,30 +132,12 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 見出し行(ドット + クイック計測)。
-          Row(
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: AppColors.accent,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: const Color(0xE656D9F0), // 0.9
-                        blurRadius: 8),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 9),
-              Text('クイック計測',
-                  style: AppTheme.sans(
-                      size: 15,
-                      weight: FontWeight.w700,
-                      color: const Color(0xFFF1ECE3))),
-            ],
-          ),
+          // 見出し(ドットは削除)。
+          Text('クイック計測',
+              style: AppTheme.sans(
+                  size: 15,
+                  weight: FontWeight.w700,
+                  color: const Color(0xFFF1ECE3))),
           const SizedBox(height: 12),
           Text('機種を選ばずに、回転率だけを計測します。',
               style: AppTheme.sans(
