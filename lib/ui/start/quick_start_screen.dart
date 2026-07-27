@@ -163,22 +163,19 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
           const SizedBox(height: 12),
           Container(height: 1, color: const Color(0x14FFFFFF)),
           const SizedBox(height: 12),
-          // できること / できないこと(✓ のみアクセント、— はニュートラル)。
-          _cardBullet('✓', AppColors.accent, '回転率・総回転・グラフ'),
+          // できること = 〇(アクセント) / できないこと = ✖(ニュートラル)。
+          _cardBullet(Icons.circle_outlined, AppColors.accent, '回転率・総回転・グラフ'),
           const SizedBox(height: 6),
-          _cardBullet('—', AppColors.mutedDark, 'ボーダー比較・期待値は出ません'),
+          _cardBullet(Icons.close, AppColors.mutedDark, 'ボーダー比較・期待値'),
         ],
       ),
     );
   }
 
-  Widget _cardBullet(String mark, Color markColor, String label) {
+  Widget _cardBullet(IconData mark, Color markColor, String label) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(mark,
-            style: AppTheme.mono(
-                size: 12, weight: FontWeight.w600, color: markColor)),
+        Icon(mark, size: 13, color: markColor),
         const SizedBox(width: 8),
         Expanded(
           child: Text(label,
