@@ -104,25 +104,27 @@ InputDecoration _fieldDeco(String hint) => InputDecoration(
       ),
     );
 
-Widget _primaryButton(String label, VoidCallback? onTap) => Opacity(
-      opacity: onTap == null ? 0.35 : 1,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 52,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.accentDeep,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(label,
-              style: AppTheme.sans(
-                  size: 15,
-                  weight: FontWeight.w700,
-                  color: AppColors.accentInk)),
-        ),
+Widget _primaryButton(String label, VoidCallback? onTap) {
+  final enabled = onTap != null;
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      height: 52,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        // 有効=シアン、無効=暗いグレー(押せないことを配色で明示)。
+        color: enabled ? AppColors.accentDeep : AppColors.surface,
+        border: enabled ? null : Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
       ),
-    );
+      child: Text(label,
+          style: AppTheme.sans(
+              size: 15,
+              weight: FontWeight.w700,
+              color: enabled ? AppColors.accentInk : AppColors.mutedDark)),
+    ),
+  );
+}
 
 /// 新規登録フォーム(名前 + ボーダー1値)。
 class _MachineFormSheet extends StatefulWidget {

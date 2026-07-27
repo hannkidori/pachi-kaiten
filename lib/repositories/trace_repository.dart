@@ -22,4 +22,10 @@ class TraceRepository {
   Future<void> delete(int id) async {
     await db.delete('traces', where: 'id = ?', whereArgs: [id]);
   }
+
+  /// 総回転 0 以下の空足跡を削除する(旧バグで残った不正レコードの一掃)。
+  /// 削除件数を返す。起動時に一度呼ぶ。
+  Future<int> deleteEmpty() async {
+    return db.delete('traces', where: 'total_rotations <= 0');
+  }
 }

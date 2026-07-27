@@ -359,16 +359,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Text(a.machine?.name ?? '計測',
-                      style: AppTheme.sans(
-                          size: 21,
-                          weight: FontWeight.w600,
-                          color: a.machine == null
-                              ? AppColors.muted
-                              : AppColors.text),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 8),
+                  // クイック計測(機種名なし)は機種名の行を出さない。
+                  if (a.machine != null) ...[
+                    Text(a.machine!.name,
+                        style: AppTheme.sans(
+                            size: 21,
+                            weight: FontWeight.w600,
+                            color: AppColors.text),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 8),
+                  ],
                   _restoreMeta(a),
                   const SizedBox(height: 4),
                   Text('最終入力 ${a.lastLabel}',

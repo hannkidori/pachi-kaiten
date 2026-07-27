@@ -161,7 +161,9 @@ class _StartScreenState extends State<StartScreen> {
                   _registerRow(),
                   const SizedBox(height: 8),
                   Expanded(child: _machineList()),
-                  _counterSection(),
+                  // 機種を選ぶまで打ち始め入力欄・テンキーは出さない
+                  // (機種を選ぶ → 打ち始め → 開始 の順序を視覚的に強制)。
+                  if (_machine != null) _counterSection(),
                   _startButton(),
                 ],
               ),
@@ -415,30 +417,29 @@ class _StartScreenState extends State<StartScreen> {
   }
 
   Widget _startButton() {
-    final label = _canStart
-        ? '計測スタート'
-        : '機種を選択してください';
+    final enabled = _canStart;
+    final label = enabled ? '計測スタート' : '機種を選択してください';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-      child: Opacity(
-        opacity: _canStart ? 1 : 0.35,
-        child: GestureDetector(
-          onTap: _canStart ? _start : null,
-          child: Container(
-            height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: _canStart ? AppColors.accentGradient : null,
-              color: _canStart ? null : AppColors.accentDeep,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              label,
-              style: AppTheme.sans(
-                  size: 16,
-                  weight: FontWeight.w700,
-                  color: AppColors.accentInk),
-            ),
+      child: GestureDetector(
+        onTap: enabled ? _start : null,
+        child: Container(
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            // 有効=シアングラデ、無効=暗いグレー(押せないことを配色で明示)。
+            gradient: enabled ? AppColors.accentGradient : null,
+            color: enabled ? null : AppColors.surface,
+            border:
+                enabled ? null : Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: AppTheme.sans(
+                size: 16,
+                weight: FontWeight.w700,
+                color: enabled ? AppColors.accentInk : AppColors.mutedDark),
           ),
         ),
       ),

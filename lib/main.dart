@@ -7,6 +7,8 @@ import 'ui/home/home_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final services = await AppServices.open();
+  // 旧バグで残った空足跡(総回転0)を一掃する(起動時に一度)。
+  await services.traces.deleteEmpty();
   runApp(PachiApp(services: services));
 }
 

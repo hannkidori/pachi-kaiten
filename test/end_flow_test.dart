@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pachi_kaiten/logic/session_service.dart';
 import 'package:pachi_kaiten/models/machine.dart';
+import 'package:pachi_kaiten/models/trace.dart';
 import 'package:pachi_kaiten/models/session.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/session_repository.dart';
@@ -181,6 +182,79 @@ void main() {
       final s2 =
           await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       expect((await sessionRepo.active())!.id, s2.id);
+    });
+  });
+
+  // ---------- 空セッションは足跡を作らない(実機バグ #1 の回帰防止) ----------
+  group('空セッションは3経路とも足跡を作らない', () {
+    // 終了 / リセット / 復帰カード終了 は全て endAndLog に集約されるため、
+    // endAndLog が空セッションを破棄することで 3 経路すべてが担保される。
+
+    /// endAndLog が破棄(null)し、足跡もセッションも残らないことを検証。
+    Future<void> expectDiscarded(Session s, Machine? machine) async {
+      final t = await service.endAndLog(s, machine);
+      expect(t, isNull);
+      expect(await traceRepo.allDesc(), isEmpty);
+      expect(await sessionRepo.byId(s.id!), isNull);
+      expect(await sessionRepo.active(), isNull);
+    }
+
+    test('決定を一度も押していない(count 0件)→ 足跡なし', () async {
+      final s =
+          await service.start(machine: _a, ballPrice: 4.0, startCounter: 100);
+      await expectDiscarded(s, _a);
+    });
+
+    test('打ち始め値と同値で1回だけ決定(count有・総回転0)→ 足跡なし', () async {
+      // 最初の決定は異常値判定をスキップするため delta 0 の count が作られるが、
+      // 総回転 0 なので空セッションとして破棄される。
+      final s =
+          await service.start(machine: _a, ballPrice: 4.0, startCounter: 100);
+      await service.recordCount(s, counter: 100); // delta 0
+      await expectDiscarded(s, _a);
+    });
+
+    test('クイック計測でも総回転0なら足跡なし(実機で見えた 計測 0.0回/k の再現)', () async {
+      final s =
+          await service.start(machine: null, ballPrice: 4.0, startCounter: 50);
+      await service.recordCount(s, counter: 50); // delta 0
+      await expectDiscarded(s, null);
+    });
+
+    test('1回でも正の回転があれば足跡は残る(境界の確認)', () async {
+      final s =
+          await service.start(machine: _a, ballPrice: 4.0, startCounter: 100);
+      await service.recordCount(s, counter: 101); // delta 1
+      final t = await service.endAndLog(s, _a);
+      expect(t, isNotNull);
+      expect(t!.totalRotations, 1);
+    });
+  });
+
+  group('TraceRepository.deleteEmpty(旧不正レコードの一掃)', () {
+    test('総回転0以下の足跡だけを削除する', () async {
+      // 正常な足跡を1件作る。
+      final s =
+          await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
+      await service.recordCount(s, counter: 20);
+      await service.endAndLog(s, _a);
+      // 旧バグ相当の空足跡を直接1件差し込む。
+      await traceRepo.insert(Trace(
+        date: '2026-07-28',
+        machineName: null,
+        rotationRate: 0,
+        totalRotations: 0,
+        consumedYen: 0,
+        bonusCount: 0,
+        createdAt: '2026-07-28T00:00:00',
+      ));
+      expect((await traceRepo.allDesc()).length, 2);
+
+      final removed = await traceRepo.deleteEmpty();
+      expect(removed, 1);
+      final all = await traceRepo.allDesc();
+      expect(all.length, 1);
+      expect(all.single.totalRotations, greaterThan(0));
     });
   });
 }

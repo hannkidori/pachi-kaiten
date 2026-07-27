@@ -148,9 +148,11 @@ class SessionService {
     );
   }
 
-  /// 終了の集約点。終了 / 台移動 / 復帰カード終了の 3 経路すべてがここを通る。
+  /// 終了の集約点。終了 / リセット / 復帰カード終了の 3 経路すべてがここを通る。
   ///
-  /// - count イベントが 1 件も無い(極端に短い)セッションは足跡を残さず破棄する。
+  /// - **総回転が 0 以下**(= 決定なし、または打ち始め値と同値で決定しただけ等の
+  ///   空セッション)は足跡を残さず破棄する。最初の決定は異常値判定をスキップする
+  ///   ため delta 0 の count が作られ得るので、count 件数でなく総回転で判定する。
   /// - それ以外は close して計測データから足跡を 1 行自動保存する。
   ///   回収額 [recovery] を渡せば P/L(回収 − 消化額)も記録、null ならスキップ扱い。
   ///
@@ -161,17 +163,17 @@ class SessionService {
     int? recovery,
   }) async {
     final list = await entries.bySession(session.id!);
-    final hasCount = list.any((e) => e.type == EntryType.count);
-    if (!hasCount) {
+    final stats = computeStats(
+      entries: list,
+      border: machine?.borderFor(session.ballPrice) ?? 0,
+    );
+    // 空セッション(総回転 0 以下)は足跡を残さず破棄する。
+    if (stats.totalRotations <= 0) {
       await discard(session.id!);
       return null;
     }
 
     await close(session, recovery: recovery);
-    final stats = computeStats(
-      entries: list,
-      border: machine?.borderFor(session.ballPrice) ?? 0,
-    );
 
     final now = clock();
     final trace = Trace(
