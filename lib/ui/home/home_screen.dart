@@ -212,17 +212,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------- 前回比ヒーロー + 従ボタン + 主役の円形スタート ----------
+  // ---------- 前回比ヒーロー + 機種選択カード + 主役の円形スタート ----------
   Widget _heroAndStart() {
     return Column(
       children: [
         Expanded(child: Center(child: _hero())),
-        // 従: 機種を選んで計測(ゴーストボタン + 1行説明)。
-        _secondaryButton(),
-        const SizedBox(height: 6),
-        Text('機種を選ぶと、ボーダーとの比較・期待値が出ます',
-            textAlign: TextAlign.center,
-            style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
+        // 従: 機種を選んで計測(横長カード)。シアンを使わず明度差で立たせる。
+        _machineSelectCard(),
         const SizedBox(height: 20),
         // 主役: 機種選択を経由せず直接カウンタ入力へ。
         _circleButton(
@@ -236,28 +232,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _secondaryButton() {
+  Widget _machineSelectCard() {
     return GestureDetector(
       onTap: _startWithMachine,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        height: 48,
-        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0x12FFFFFF), // rgba(255,255,255,0.07)
+          border: Border.all(color: const Color(0x24FFFFFF)), // 0.14
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.grid_view_rounded,
-                size: 15, color: AppColors.muted),
-            const SizedBox(width: 8),
-            Text('機種を選んで計測',
-                style: AppTheme.sans(
-                    size: 13.5,
-                    weight: FontWeight.w600,
-                    color: AppColors.textStrong)),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('機種を選んで計測',
+                      style: AppTheme.sans(
+                          size: 15,
+                          weight: FontWeight.w700,
+                          color: const Color(0xFFF1ECE3))),
+                  const SizedBox(height: 4),
+                  Text('ボーダーとの比較・期待値がでます',
+                      style: AppTheme.sans(
+                          size: 11, height: 1.5, color: AppColors.subtle)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Icon(Icons.chevron_right, size: 18, color: AppColors.subtle),
           ],
         ),
       ),
