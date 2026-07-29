@@ -1,0 +1,46 @@
+workflows:
+  ios-build:
+    name: iOS Build (pachi回転計 signed, TestFlight)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      # 👑 Codemagic の Team settings > Integrations > App Store Connect に
+      # 登録済みの App Store Connect API キー統合(Admin権限 / 統合名: CodemagicAdmin)。
+      # ハナジャグと同じ統合を共用(同一 Apple アカウントの場合)。
+      app_store_connect: CodemagicAdmin
+    environment:
+      ios_signing:
+        # 手動コードサイニング。Codemagic の Team settings > Code signing identities に
+        # アップロード済みの署名ファイルを「参照名」で指定する。
+        certificates:
+          # 配布証明書(Apple Distribution)はアカウント単位で共通のため、
+          # ハナジャグと同一 Apple チームなら既存の証明書を再利用する。
+          # ※p12 は OpenSSL 3 の既定だと Apple バリデータに弾かれるため、
+          #   `openssl pkcs12 -export -legacy` で再エクスポートしたものを登録すること。
+          - ios_distribution_cert
+        provisioning_profiles:
+          # com.pachikaiten.pachikaiten 用の App Store プロビジョニングプロファイルを
+          # この参照名で新規アップロードする(ハナジャグ用とは別物)。
+          - ios_appstore_profile_pachikaiten
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles
+      - name: Build signed iOS IPA
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false

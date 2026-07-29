@@ -70,10 +70,13 @@ dev_dependencies:
   # Android ランチャーアイコン生成(ビルド時のみ / 実行時は通信ゼロ)。
   flutter_launcher_icons: ^0.14.4
 
-# ランチャーアイコン: dark/ の素材からアダプティブ + レガシーを生成する。
+# ランチャーアイコン: dark/ の素材から iOS(全サイズ) + Android(アダプティブ + レガシー)を生成する。
+# iOS はアルファチャンネル不可のため remove_alpha_ios で除去し、背景色でフラット化する。
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#0a0c0e"
   image_path: "dark/icon-1024.png"
   adaptive_icon_background: "dark/adaptive-background-432.png"
   adaptive_icon_foreground: "dark/adaptive-foreground-432.png"
