@@ -25,20 +25,12 @@ void main() {
     });
     tearDown(() async => db.close());
 
-    test('初期は未表示。set で表示済みになり、reset で戻る', () async {
+    test('初期は未表示。set で表示済みになる', () async {
       // 初期(フラグ未設定)は未表示。
       expect(await settings.onbCounterDone(), isFalse);
-      expect(await settings.onbHitDone(), isFalse);
 
       await settings.setOnbCounterDone();
-      await settings.setOnbHitDone();
       expect(await settings.onbCounterDone(), isTrue);
-      expect(await settings.onbHitDone(), isTrue);
-
-      // 「はじめての説明をもう一度見る」= リセットで両方戻る。
-      await settings.resetOnboarding();
-      expect(await settings.onbCounterDone(), isFalse);
-      expect(await settings.onbHitDone(), isFalse);
     });
   });
   group('機種スロット — 育つマスタ(自動換算なし)', () {

@@ -79,11 +79,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _load();
   }
 
-  Future<void> _resetOnboarding() async {
-    await s.settings.resetOnboarding();
-    _toast('次回の計測から説明を表示します');
-  }
-
   Future<void> _export() async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -127,8 +122,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _section('データ'),
                   _actionRow('足跡と機種をファイルに保存', Icons.ios_share, _export),
                   _hint('機種変更時の持ち出し用(JSON)'),
-                  _actionRow('はじめての説明をもう一度見る', Icons.replay,
-                      _resetOnboarding),
                   _section('このアプリ'),
                   _hint('広告なし・通信なし。計測データはこの端末の中だけにあります'),
                   const SizedBox(height: 6),

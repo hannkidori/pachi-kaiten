@@ -59,9 +59,8 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   bool _wasError = false;
   bool _flowBusy = false; // 終了/台移動フロー実行中の多重起動防止
 
-  // 文脈内オンボーディング。0=なし / 1=カウンタ説明 / 2=大当り説明。
+  // 文脈内オンボーディング。0=なし / 1=カウンタ説明(初回計測画面のスポットライト)。
   int _onbStep = 0;
-  bool _onbHitDone = true; // フラグ読込までは発火させない
 
   late MeasurementController _c;
   MeasurementController get c => _c;
@@ -91,10 +90,8 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   /// オンボーディングの表示済みフラグを読み込む。未表示なら初回スポットを出す。
   Future<void> _loadOnboarding() async {
     final counterDone = await s.settings.onbCounterDone();
-    final hitDone = await s.settings.onbHitDone();
     if (!mounted) return;
     setState(() {
-      _onbHitDone = hitDone;
       // 初回の計測画面表示時、カウンタ+決定をスポット。
       if (!counterDone) _onbStep = 1;
     });
@@ -103,14 +100,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   Future<void> _dismissOnbCounter() async {
     setState(() => _onbStep = 0);
     await s.settings.setOnbCounterDone();
-  }
-
-  Future<void> _dismissOnbHit() async {
-    setState(() {
-      _onbStep = 0;
-      _onbHitDone = true;
-    });
-    await s.settings.setOnbHitDone();
   }
 
   @override
@@ -138,10 +127,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           HapticFeedback.heavyImpact();
         case CommitFeedback.commit:
           HapticFeedback.selectionClick();
-          // 初セッションの決定5回目で大当りボタンの説明を1回だけ出す。
-          if (!_onbHitDone && _onbStep == 0 && c.commitCount == 5) {
-            setState(() => _onbStep = 2);
-          }
         case CommitFeedback.none:
           break;
       }
@@ -306,14 +291,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                     button: 'はじめる',
                     onTap: _dismissOnbCounter,
                   ),
-                if (_onbStep == 2)
-                  _onbOverlay(
-                    align: Alignment.topCenter,
-                    text: '大当りしたら打ち終わるまでそのまま。通常に戻ったら'
-                        '『大当り』を押して、台の上の回転数を入れ直すだけ。',
-                    button: 'OK',
-                    onTap: _dismissOnbHit,
-                  ),
               ],
             );
           },
@@ -382,9 +359,9 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     if (c.isHit) {
       return _bannerBar(
         dot: AppColors.hit,
-        label: '大当り',
+        label: '大当り終了後、計測を開始する回転数を入力',
         labelColor: AppColors.hitText,
-        note: '— 復帰後のカウンタ値を入力',
+        note: '',
         bg: const Color(0x22E3B168),
         border: const Color(0x73E3B168),
       );
@@ -422,8 +399,10 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                 style: AppTheme.sans(
                     size: 12, weight: FontWeight.w500, color: labelColor)),
           ),
-          const SizedBox(width: 6),
-          Text(note, style: AppTheme.sans(size: 11, color: AppColors.muted)),
+          if (note.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            Text(note, style: AppTheme.sans(size: 11, color: AppColors.muted)),
+          ],
         ],
       ),
     );
