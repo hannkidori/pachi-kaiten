@@ -91,14 +91,14 @@ void main() {
       expect(entries.single.type, EntryType.start);
       expect(entries.single.counter, 26143);
 
-      // 復帰カードに出る値: 消化 0.0k / 0回転
+      // 復帰カードに出る値: 計測 0円分 / 0回転
       final stats = computeStats(
         entries: entries,
         border: machine.borderFor(active.ballPrice) ?? 0,
       );
       expect(stats.consumedYen, 0);
       expect(stats.totalRotations, 0);
-      expect(fmtK(stats.consumedYen), '0.0k');
+      expect(fmtYen(stats.consumedYen), '0円');
     });
   });
 }

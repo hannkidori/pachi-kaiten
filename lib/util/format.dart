@@ -22,9 +22,6 @@ String fmtSignedNum(num v) {
   return '$sign${_grouped.format(n.abs())}';
 }
 
-/// 千円単位。例: 12.0k。
-String fmtK(num yen) => '${(yen / 1000).toStringAsFixed(1)}k';
-
 /// 回転率など小数1桁。null は "--.-"。
 String fmtRate(double? v) => v == null ? '--.-' : v.toStringAsFixed(1);
 

@@ -30,11 +30,11 @@ class HomeScreen extends StatefulWidget {
 class _ActiveSummary {
   final Session session;
   final Machine? machine; // null=クイック計測
-  final String consumedK;
+  final String consumedYen;
   final int totalSpins;
   final double? rate;
   final String lastLabel;
-  const _ActiveSummary(this.session, this.machine, this.consumedK,
+  const _ActiveSummary(this.session, this.machine, this.consumedYen,
       this.totalSpins, this.rate, this.lastLabel);
 }
 
@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final last = entries.isNotEmpty
           ? DateTime.tryParse(entries.last.createdAt)
           : null;
-      summary = _ActiveSummary(session, machine, fmtK(stats.consumedYen),
+      summary = _ActiveSummary(session, machine, fmtYen(stats.consumedYen),
           stats.totalRotations, stats.rotationRate, _lastInputLabel(last));
     }
     final traces = await s.traces.allDesc();
@@ -416,7 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Text.rich(
       TextSpan(children: [
         TextSpan(
-            text: '消化 ${a.consumedK}分 ・ 総回転 ${a.totalSpins} ・ ',
+            text: '計測 ${a.consumedYen}分 ・ 総回転 ${a.totalSpins} ・ ',
             style: AppTheme.mono(size: 12, color: AppColors.muted)),
         TextSpan(
             text: '${fmtRate(a.rate)}回/k',

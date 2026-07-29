@@ -456,7 +456,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
               ),
               Expanded(
                 child: Text(
-                  c.isQuick ? '計測' : c.machine!.name,
+                  c.isQuick ? '機種なし' : c.machine!.name,
                   style: AppTheme.sans(
                       size: 14,
                       weight: FontWeight.w500,
@@ -473,7 +473,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           const SizedBox(height: 8),
           _statLine([
             if (c.hasBorder) ('B', borderText),
-            ('消化', '${fmtK(st.consumedYen)}分'),
+            ('計測', '${fmtYen(st.consumedYen)}分'),
             ('総回転', '${st.totalRotations}'),
           ]),
         ],
