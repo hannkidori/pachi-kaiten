@@ -131,4 +131,42 @@ void main() {
       expect(s.rebaseMarkers, [2, 4]);
     });
   });
+
+  group('グラフの棒まとめ(表示専用 / 1本=1000円分)', () {
+    test('500円で決定2回 → 1本の完成棒(回転数は2回分の合計)', () {
+      final s = computeStats(entries: [
+        _e(EntryType.start, 0, seq: 0),
+        _e(EntryType.count, 10, yen: 500, seq: 1),
+        _e(EntryType.count, 18, yen: 500, seq: 2),
+      ], border: 16.5);
+      final bars = s.chartData.bars;
+      expect(bars.length, 1);
+      expect(bars.first.complete, isTrue);
+      expect(bars.first.rotations, 18); // 10 + 8
+    });
+
+    test('500円で決定1回 → 未完成の棒が1本(complete=false・生値)', () {
+      final s = computeStats(entries: [
+        _e(EntryType.start, 0, seq: 0),
+        _e(EntryType.count, 10, yen: 500, seq: 1),
+      ], border: 16.5);
+      final bars = s.chartData.bars;
+      expect(bars.length, 1);
+      expect(bars.first.complete, isFalse);
+      expect(bars.first.rotations, 10);
+    });
+
+    test('1000円×2 → 500円×1(切替) → 1000円×1(戻す) の区切りが意図通り', () {
+      final s = computeStats(entries: [
+        _e(EntryType.start, 0, seq: 0),
+        _e(EntryType.count, 20, yen: 1000, seq: 1), // 完成 20
+        _e(EntryType.count, 40, yen: 1000, seq: 2), // 完成 20
+        _e(EntryType.count, 50, yen: 500, seq: 3), //  未完成 10
+        _e(EntryType.count, 70, yen: 1000, seq: 4), // 半端棒を確定し新しい完成棒 20
+      ], border: 16.5);
+      final bars = s.chartData.bars;
+      expect(bars.map((b) => b.complete).toList(), [true, true, false, true]);
+      expect(bars.map((b) => b.rotations).toList(), [20, 20, 10, 20]);
+    });
+  });
 }

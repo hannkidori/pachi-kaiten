@@ -5,12 +5,14 @@ import '../../theme/app_theme.dart';
 
 // グラフの色ルール(確定済み区間はボーダー判定色)。
 // 判定ルール: ボーダー以上=ティール / 未満=赤。最新(右端)の棒はシアン。
-const Color chartBarAbove = Color(0x6656D9F0); // ボーダー以上(ティール)
-const Color chartBarBelow = Color(0x52F06A5D); // ボーダー未満(赤)
+const Color chartBarAbove = Color(0xFF26C6A8); // ボーダー以上(ティール・不透明で視認強化)
+const Color chartBarBelow = Color(0xFFF25A4B); // ボーダー未満(赤・不透明で視認強化)
 const Color chartBarLatest = AppColors.accent; // 最新の棒(シアン)
 const Color chartBarNeutral = Color(0x29FFFFFF); // クイック計測(判定なし)
+const Color chartBarPartial = Color(0x30FFFFFF); // 未完成(500円分)= 半透明ニュートラル
 const Color chartLabelAbove = Color(0xFF5A7A82);
 const Color chartLabelBelow = AppColors.downDim;
+const Color chartLabelPartial = Color(0x66FFFFFF); // 未完成の数字 = 減光
 
 /// 確定済み区間の棒色。ボーダー以上=ティール / 未満=赤。
 Color chartBarColor(double ratePer1000, double border) {
@@ -20,6 +22,21 @@ Color chartBarColor(double ratePer1000, double border) {
 /// 確定済み区間の数値ラベル色(現金・持ち玉共通)。
 Color chartLabelColor(double ratePer1000, double border) =>
     ratePer1000 < border ? chartLabelBelow : chartLabelAbove;
+
+/// 棒の色(表示専用)。未完成(500円分)は判定せず半透明ニュートラル。
+/// 完成棒は従来どおり: 最新=シアン / それ以外=ボーダー判定色(クイックはニュートラル)。
+Color barColorFor(ChartBar b,
+    {required bool isLatest, required bool hasBorder, required double border}) {
+  if (!b.complete) return chartBarPartial;
+  if (isLatest) return chartBarLatest;
+  return hasBorder ? chartBarColor(b.rotations.toDouble(), border) : chartBarNeutral;
+}
+
+/// 棒の下の数値ラベル色(表示専用)。未完成は減光、完成は判定色(クイックは muted)。
+Color labelColorFor(ChartBar b, {required bool hasBorder, required double border}) {
+  if (!b.complete) return chartLabelPartial;
+  return hasBorder ? chartLabelColor(b.rotations.toDouble(), border) : AppColors.mutedDark;
+}
 
 /// 「千円ごとの回転」グラフ。
 ///
@@ -45,11 +62,12 @@ class RotationChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 各 count 区間を棒にする。
-    final segs = stats.segments;
+    // count 区間を「1本=1000円分」の棒列へまとめる(表示専用の変換)。
+    final data = stats.chartData;
+    final bars = data.bars;
     final border = stats.border;
     final hasBorder = stats.hasBorder;
-    final barVals = segs.map((s) => s.ratePer1000).toList();
+    final barVals = bars.map((b) => b.rotations.toDouble()).toList();
     final maxV = [if (hasBorder) border + 3, 1.0, ...barVals]
         .reduce((a, b) => a > b ? a : b);
     final linePct = (border / maxV).clamp(0.0, 0.96);
@@ -110,20 +128,19 @@ class RotationChart extends StatelessWidget {
                     ),
                   // 棒とラベルは横スクロール。棒の余地が無ければ描かない
                   // (「棒が無くラベルだけ」を避ける)。
-                  if (segs.isNotEmpty && barArea > 0)
+                  if (bars.isNotEmpty && barArea > 0)
                     SingleChildScrollView(
                       controller: controller,
                       scrollDirection: Axis.horizontal,
                       child: _Bars(
-                        segs: segs,
-                        barVals: barVals,
+                        bars: bars,
                         border: border,
                         hasBorder: hasBorder,
                         maxV: maxV,
                         barArea: barArea,
                         labelH: label,
                         barGap: barGap,
-                        markers: stats.rebaseMarkers,
+                        markers: data.markers,
                       ),
                     ),
                 ],
@@ -137,8 +154,7 @@ class RotationChart extends StatelessWidget {
 }
 
 class _Bars extends StatelessWidget {
-  final List<RotationSegment> segs;
-  final List<double> barVals;
+  final List<ChartBar> bars;
   final double border;
   final bool hasBorder;
   final double maxV;
@@ -146,12 +162,11 @@ class _Bars extends StatelessWidget {
   final double labelH;
   final double barGap;
 
-  /// 大当りマーカーの位置(その rebase までに現れた区間の本数)。
+  /// 大当りマーカーの位置(棒本数基準)。
   final List<int> markers;
 
   const _Bars({
-    required this.segs,
-    required this.barVals,
+    required this.bars,
     required this.border,
     required this.hasBorder,
     required this.maxV,
@@ -181,14 +196,14 @@ class _Bars extends StatelessWidget {
       labelCells.add(label);
     }
 
-    for (var p = 0; p <= segs.length; p++) {
+    for (var p = 0; p <= bars.length; p++) {
       for (final m in markers) {
         if (m == p) {
           add(_marker(), const SizedBox(width: _markerW));
         }
       }
-      if (p < segs.length) {
-        add(_bar(barVals[p], isLatest: p == segs.length - 1), _label(p));
+      if (p < bars.length) {
+        add(_bar(bars[p], isLatest: p == bars.length - 1), _label(bars[p]));
       }
     }
 
@@ -212,12 +227,13 @@ class _Bars extends StatelessWidget {
     );
   }
 
-  Widget _bar(double val, {required bool isLatest}) {
-    final h = (val / maxV * barArea).clamp(0.0, barArea);
-    // 最新の棒は常にシアン。それ以外は hasBorder なら判定色、クイックはニュートラル。
-    final Color color = isLatest
-        ? chartBarLatest
-        : (hasBorder ? chartBarColor(val, border) : chartBarNeutral);
+  Widget _bar(ChartBar b, {required bool isLatest}) {
+    // 高さ・数字・色はすべて b.rotations を基準にする(3つが同じ基準)。
+    // 完成棒は 1000 円分なので回転数=千円あたり回転率。未完成棒は 500 円分の
+    // 生の回転数のまま低く描き、ボーダー判定はしない。
+    final h = (b.rotations / maxV * barArea).clamp(0.0, barArea);
+    final color =
+        barColorFor(b, isLatest: isLatest, hasBorder: hasBorder, border: border);
     return Container(
       width: _barW,
       height: h,
@@ -228,15 +244,12 @@ class _Bars extends StatelessWidget {
     );
   }
 
-  Widget _label(int i) {
-    // ラベル色: hasBorder なら判定色、クイックはニュートラル。
-    final color = hasBorder
-        ? chartLabelColor(barVals[i], border)
-        : AppColors.mutedDark;
+  Widget _label(ChartBar b) {
+    final color = labelColorFor(b, hasBorder: hasBorder, border: border);
     return SizedBox(
       width: _barW,
       child: Text(
-        '${segs[i].rotations}',
+        '${b.rotations}',
         textAlign: TextAlign.center,
         maxLines: 1,
         style: AppTheme.mono(size: 10, color: color),
