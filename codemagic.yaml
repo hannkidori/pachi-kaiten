@@ -9,6 +9,10 @@ workflows:
       # ハナジャグと同じ統合を共用(同一 Apple アカウントの場合)。
       app_store_connect: CodemagicAdmin
     environment:
+      # Codemagic のアプリ環境変数グループ。APP_STORE_APP_ID(数値 Apple ID)を
+      # この appstore グループに入れると自動採番が有効化する。空なら pubspec にフォールバック。
+      groups:
+        - appstore
       ios_signing:
         # 手動コードサイニング。Codemagic の Team settings > Code signing identities に
         # アップロード済みの署名ファイルを「参照名」で指定する。
