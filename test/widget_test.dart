@@ -261,28 +261,23 @@ void main() {
     test('未完成の棒はボーダー判定色を適用しない(半透明ニュートラル+減光ラベル)', () {
       const border = 16.5;
       const partial = ChartBar(rotations: 10, complete: false);
-      final barC =
-          barColorFor(partial, isLatest: true, hasBorder: true, border: border);
+      final barC = barColorFor(partial, hasBorder: true, border: border);
       expect(barC, chartBarPartial);
       expect(barC, isNot(chartBarAbove));
       expect(barC, isNot(chartBarBelow));
-      expect(barC, isNot(chartBarLatest));
       final labelC = labelColorFor(partial, hasBorder: true, border: border);
       expect(labelC, chartLabelPartial);
       expect(labelC, isNot(chartLabelAbove));
       expect(labelC, isNot(chartLabelBelow));
     });
 
-    test('完成棒は従来どおり判定色(最新=シアン / 以上=ティール / 未満=赤)', () {
+    test('完成棒は最新/それ以外を問わずボーダー判定色(超過=ティール / 未満=赤)', () {
       const border = 16.5;
       const above = ChartBar(rotations: 20, complete: true);
       const below = ChartBar(rotations: 15, complete: true);
-      expect(barColorFor(above, isLatest: false, hasBorder: true, border: border),
-          chartBarAbove);
-      expect(barColorFor(below, isLatest: false, hasBorder: true, border: border),
-          chartBarBelow);
-      expect(barColorFor(above, isLatest: true, hasBorder: true, border: border),
-          chartBarLatest);
+      // 最新かどうかで色は変えない(シアンのハイライトは廃止)。
+      expect(barColorFor(above, hasBorder: true, border: border), chartBarAbove);
+      expect(barColorFor(below, hasBorder: true, border: border), chartBarBelow);
     });
   });
 

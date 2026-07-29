@@ -4,10 +4,10 @@ import '../../logic/rotation_calc.dart';
 import '../../theme/app_theme.dart';
 
 // グラフの色ルール(確定済み区間はボーダー判定色)。
-// 判定ルール: ボーダー以上=ティール / 未満=赤。最新(右端)の棒はシアン。
+// 判定ルール: ボーダー以上=ティール / 未満=赤。最新かどうかは色で示さない
+// (最新は常に右端にあるため位置で判別でき、色軸をボーダー判定に一本化する)。
 const Color chartBarAbove = Color(0xFF26C6A8); // ボーダー以上(ティール・不透明で視認強化)
 const Color chartBarBelow = Color(0xFFF25A4B); // ボーダー未満(赤・不透明で視認強化)
-const Color chartBarLatest = AppColors.accent; // 最新の棒(シアン)
 const Color chartBarNeutral = Color(0x29FFFFFF); // クイック計測(判定なし)
 const Color chartBarPartial = Color(0x30FFFFFF); // 未完成(500円分)= 半透明ニュートラル
 const Color chartLabelAbove = Color(0xFF5A7A82);
@@ -24,11 +24,10 @@ Color chartLabelColor(double ratePer1000, double border) =>
     ratePer1000 < border ? chartLabelBelow : chartLabelAbove;
 
 /// 棒の色(表示専用)。未完成(500円分)は判定せず半透明ニュートラル。
-/// 完成棒は従来どおり: 最新=シアン / それ以外=ボーダー判定色(クイックはニュートラル)。
-Color barColorFor(ChartBar b,
-    {required bool isLatest, required bool hasBorder, required double border}) {
+/// 完成棒はボーダー判定色(超過=ティール / 未満=赤。クイックはニュートラル)。
+/// 最新かどうかは色で示さない(常に右端にあるため位置で判別できる)。
+Color barColorFor(ChartBar b, {required bool hasBorder, required double border}) {
   if (!b.complete) return chartBarPartial;
-  if (isLatest) return chartBarLatest;
   return hasBorder ? chartBarColor(b.rotations.toDouble(), border) : chartBarNeutral;
 }
 
@@ -203,7 +202,7 @@ class _Bars extends StatelessWidget {
         }
       }
       if (p < bars.length) {
-        add(_bar(bars[p], isLatest: p == bars.length - 1), _label(bars[p]));
+        add(_bar(bars[p]), _label(bars[p]));
       }
     }
 
@@ -227,13 +226,12 @@ class _Bars extends StatelessWidget {
     );
   }
 
-  Widget _bar(ChartBar b, {required bool isLatest}) {
+  Widget _bar(ChartBar b) {
     // 高さ・数字・色はすべて b.rotations を基準にする(3つが同じ基準)。
     // 完成棒は 1000 円分なので回転数=千円あたり回転率。未完成棒は 500 円分の
     // 生の回転数のまま低く描き、ボーダー判定はしない。
     final h = (b.rotations / maxV * barArea).clamp(0.0, barArea);
-    final color =
-        barColorFor(b, isLatest: isLatest, hasBorder: hasBorder, border: border);
+    final color = barColorFor(b, hasBorder: hasBorder, border: border);
     return Container(
       width: _barW,
       height: h,
