@@ -32,9 +32,39 @@ workflows:
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles
+      - name: Resolve build number (TestFlight auto-increment)
+        script: |
+          #!/usr/bin/env sh
+          set -e
+          # フォールバック用: pubspec の version: x.y.z+BUILD の +BUILD 部分。
+          PUBSPEC_BUILD=$(grep '^version:' pubspec.yaml | head -1 | sed 's/.*+//' | tr -d '[:space:]')
+          BUILD_NUMBER="$PUBSPEC_BUILD"
+          # APP_STORE_APP_ID(アプリの数値 Apple ID)が設定されていれば TestFlight の
+          # 最新ビルド番号+1 を自動採番。未設定/取得失敗/新規アプリ(既存ビルドなし)は
+          # pubspec のビルド番号にフォールバックする(=従来動作。安全に通る)。
+          if [ -n "$APP_STORE_APP_ID" ]; then
+            set +e
+            LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APP_ID" 2>/tmp/asc_err.log)
+            RC=$?
+            set -e
+            if [ "$RC" -eq 0 ] && [ -n "$LATEST" ]; then
+              BUILD_NUMBER=$((LATEST + 1))
+              echo "TestFlight 最新ビルド番号=$LATEST → 採番=$BUILD_NUMBER"
+            elif [ "$RC" -eq 0 ]; then
+              echo "既存ビルドなし(新規アプリ)。pubspec のビルド番号=$BUILD_NUMBER を使用。"
+            else
+              echo "WARN: 最新ビルド番号の取得に失敗(rc=$RC)。pubspec の $BUILD_NUMBER にフォールバック。"
+              cat /tmp/asc_err.log 2>/dev/null || true
+            fi
+          else
+            echo "APP_STORE_APP_ID 未設定 → 自動採番スキップ。pubspec のビルド番号=$BUILD_NUMBER を使用。"
+          fi
+          echo "$BUILD_NUMBER" > /tmp/build_number.txt
+          echo "採用ビルド番号: $BUILD_NUMBER"
       - name: Build signed iOS IPA
         script: |
           flutter build ipa --release \
+            --build-number="$(cat /tmp/build_number.txt)" \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
