@@ -149,6 +149,9 @@ class _StartScreenState extends State<StartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
+      // テンキーはアプリ独自入力でシステムキーボードと同時使用しない。キーボード
+      // 降下の過渡で本文が縮み、出現直後のカウンタ欄+テンキーが一瞬溢れるのを防ぐ。
+      resizeToAvoidBottomInset: false,
       body: GlowBackground.start(
         child: SafeArea(
         child: _loading
