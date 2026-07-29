@@ -70,13 +70,13 @@ dev_dependencies:
   # Android ランチャーアイコン生成(ビルド時のみ / 実行時は通信ゼロ)。
   flutter_launcher_icons: ^0.14.4
 
-# ランチャーアイコン: dark/ の素材からアダプティブ + レガシーを生成する。
+# ランチャーアイコン: dark2/ の素材からアダプティブ + レガシーを生成する。
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "dark/icon-1024.png"
-  adaptive_icon_background: "dark/adaptive-background-432.png"
-  adaptive_icon_foreground: "dark/adaptive-foreground-432.png"
+  image_path: "dark2/icon-1024.png"
+  adaptive_icon_background: "dark2/adaptive-background-432.png"
+  adaptive_icon_foreground: "dark2/adaptive-foreground-432.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
