@@ -1,5 +1,4 @@
 import '../db/database.dart';
-import '../logic/backup_service.dart';
 import '../logic/session_service.dart';
 import '../repositories/entry_repository.dart';
 import '../repositories/machine_repository.dart';
@@ -16,7 +15,6 @@ class AppServices {
   final TraceRepository traces;
   final SettingsRepository settings;
   final SessionService sessionService;
-  final BackupService backup;
 
   AppServices({
     required this.machines,
@@ -25,7 +23,6 @@ class AppServices {
     required this.traces,
     required this.settings,
     required this.sessionService,
-    required this.backup,
   });
 
   static Future<AppServices> open() async {
@@ -43,7 +40,6 @@ class AppServices {
       settings: settings,
       sessionService: SessionService(
           sessions: sessions, entries: entries, traces: traces),
-      backup: BackupService(db),
     );
   }
 }

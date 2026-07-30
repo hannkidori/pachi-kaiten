@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../logic/backup_files.dart';
 import '../../models/machine.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../start/machine_sheets.dart';
 import '../widgets/glow_background.dart';
 
-/// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止 / 機種の編集・削除 /
-/// エクスポート。店舗プロファイルと収支インポートは廃止した。
+/// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止 / 機種の編集・削除。
+/// エクスポート/インポートは次期バージョンで揃えて実装予定(現状は未提供)。
 class SettingsScreen extends StatefulWidget {
   final AppServices services;
   const SettingsScreen({super.key, required this.services});
@@ -25,7 +24,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _ballPrice = 4.0;
   bool _keepAwake = true;
   bool _loading = true;
-  bool _busy = false;
 
   @override
   void initState() {
@@ -46,11 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _keepAwake = keepAwake;
       _loading = false;
     });
-  }
-
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _setAddUnit(int unit) async {
@@ -77,18 +70,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await s.machines.update(res.saved!);
     }
     await _load();
-  }
-
-  Future<void> _export() async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      await exportAndShare(s.backup);
-    } catch (e) {
-      _toast('エクスポートに失敗しました');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   @override
@@ -119,9 +100,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               size: 12, color: AppColors.mutedDark)),
                     ),
                   for (final m in _machines) _machineRow(m),
-                  _section('データ'),
-                  _actionRow('足跡と機種をファイルに保存', Icons.ios_share, _export),
-                  _hint('機種変更時の持ち出し用(JSON)'),
                   _section('このアプリ'),
                   _hint('広告なし・通信なし。計測データはこの端末の中だけにあります'),
                   const SizedBox(height: 6),
@@ -263,22 +241,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _actionRow(String label, IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: _busy ? null : onTap,
-      child: Opacity(
-        opacity: _busy ? 0.5 : 1,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 18, color: AppColors.textDim),
-              const SizedBox(width: 10),
-              Text(label, style: AppTheme.sans(size: 14)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

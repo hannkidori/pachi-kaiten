@@ -1,6 +1,5 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:pachi_kaiten/db/database.dart';
-import 'package:pachi_kaiten/logic/backup_service.dart';
 import 'package:pachi_kaiten/logic/session_service.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
@@ -24,7 +23,6 @@ AppServices buildTestServices(Database db) {
     settings: settings,
     sessionService: SessionService(
         sessions: sessions, entries: entries, traces: traces),
-    backup: BackupService(db),
   );
 }
 

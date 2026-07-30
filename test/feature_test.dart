@@ -1,14 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pachi_kaiten/logic/backup_service.dart';
-import 'package:pachi_kaiten/logic/session_service.dart';
 import 'package:pachi_kaiten/models/machine.dart';
-import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
-import 'package:pachi_kaiten/repositories/session_repository.dart';
 import 'package:pachi_kaiten/repositories/settings_repository.dart';
-import 'package:pachi_kaiten/repositories/trace_repository.dart';
 import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -76,33 +71,6 @@ void main() {
       reloaded = await repo.byId(saved.id!);
       expect(reloaded!.border4, 18.3); // 4円は保持
       expect(reloaded.border1, 72.0);
-    });
-  });
-
-  group('エクスポート', () {
-    late Database db;
-
-    setUp(() async => db = await openTestDb());
-    tearDown(() async => db.close());
-
-    test('エクスポート JSON は machines と traces を含む', () async {
-      final machines = MachineRepository(db);
-      await machines.insert(const Machine(name: 'X', border4: 16.5));
-
-      final service = SessionService(
-        sessions: SessionRepository(db),
-        entries: EntryRepository(db),
-        traces: TraceRepository(db),
-      );
-      const m = Machine(id: 1, name: 'X', border4: 16.5);
-      final s = await service.start(machine: m, ballPrice: 4.0, startCounter: 0);
-      await service.recordCount(s, counter: 20);
-      await service.endAndLog(s, m, recovery: 3000);
-
-      final data = await BackupService(db).exportData();
-      expect(data['app'], 'pachi_kaiten');
-      expect((data['machines'] as List), isNotEmpty);
-      expect((data['traces'] as List).length, 1);
     });
   });
 
