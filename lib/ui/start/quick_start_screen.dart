@@ -33,6 +33,9 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
     _load();
   }
 
+  /// 短い画面(iPhone SE 第1世代 / iPhone 8 相当)ではテンキー等を詰める。
+  bool get _compact => MediaQuery.sizeOf(context).height < 620;
+
   Future<void> _load() async {
     final addUnit = await s.settings.addUnitDefault();
     final ballPrice = await s.settings.ballPrice();
@@ -205,10 +208,12 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
             typed: _counter,
             prevCounter: null, // 打ち始め=前回「—」
             placeholder: '打ち始めの数字',
+            height: _compact ? 52 : 58,
           ),
           const SizedBox(height: 8),
           Numpad(
-            keyHeight: 44,
+            keyHeight: _compact ? 40 : 44,
+            spacing: _compact ? 6 : 8,
             onKey: (k) => setState(() => _counter = applyKey(_counter, k)),
           ),
         ],

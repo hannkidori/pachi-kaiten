@@ -294,9 +294,17 @@ Widget _gradientButton(String label,
         gradient: AppColors.accentGradient,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Text(label,
-          style: AppTheme.sans(
-              size: 16, weight: FontWeight.w700, color: AppColors.accentInk)),
+      // 機種名を含むラベル(「〇〇のままリセット」)は長くなり得るので、
+      // ボタンの外へはみ出さないよう 1 行に収める。
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: AppTheme.sans(
+                size: 16, weight: FontWeight.w700, color: AppColors.accentInk)),
+      ),
     ),
   );
 }

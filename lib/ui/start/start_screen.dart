@@ -69,6 +69,9 @@ class _StartScreenState extends State<StartScreen> {
     _load();
   }
 
+  /// 短い画面(iPhone SE 第1世代 / iPhone 8 相当)ではテンキー等を詰める。
+  bool get _compact => MediaQuery.sizeOf(context).height < 620;
+
   Future<void> _load({int? keepSelectedId}) async {
     final machines = await s.machines.all();
     final recentIds = await s.sessions.recentMachineIds();
@@ -409,10 +412,12 @@ class _StartScreenState extends State<StartScreen> {
             typed: _counter,
             prevCounter: null, // 打ち始め=前回「—」
             placeholder: '打ち始めの数字',
+            height: _compact ? 52 : 58,
           ),
           const SizedBox(height: 8),
           Numpad(
-            keyHeight: 44,
+            keyHeight: _compact ? 40 : 44,
+            spacing: _compact ? 6 : 8,
             onKey: (k) => setState(() => _counter = applyKey(_counter, k)),
           ),
         ],

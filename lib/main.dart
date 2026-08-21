@@ -76,6 +76,12 @@ class PachiApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // 端末の文字サイズ設定は 1.3 倍までを上限にする。計測画面は固定高の
+      // テンキー+決定を積むため、それ以上に拡大すると画面に収まらない。
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.3,
+        child: child ?? const SizedBox.shrink(),
+      ),
       home: HomeScreen(services: services),
     );
   }

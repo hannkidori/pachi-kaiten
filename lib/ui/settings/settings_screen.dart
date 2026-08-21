@@ -234,8 +234,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis),
             ),
-            Text('4円 ${slot(m.border4)} ・ 1円 ${slot(m.border1)}',
-                style: AppTheme.mono(size: 11, color: AppColors.muted)),
+            // 文字拡大時でも行からはみ出さないようにする。
+            Flexible(
+              child: Text('4円 ${slot(m.border4)} ・ 1円 ${slot(m.border1)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.mono(size: 11, color: AppColors.muted)),
+            ),
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedDark),
           ],

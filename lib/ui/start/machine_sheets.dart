@@ -193,7 +193,9 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         decoration: _sheetDeco(),
-        child: Column(
+        // キーボードが出た状態でも収まらない場合はスクロールで逃がす
+        // (小さい画面 / 文字拡大でシートが溢れるのを防ぐ)。
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -233,7 +235,7 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
             const SizedBox(height: 20),
             _primaryButton('登録して計測開始', _valid ? _submit : null),
           ],
-        ),
+        )),
       ),
     );
   }
@@ -285,7 +287,9 @@ class _BorderPromptSheetState extends State<_BorderPromptSheet> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         decoration: _sheetDeco(),
-        child: Column(
+        // キーボードが出た状態でも収まらない場合はスクロールで逃がす
+        // (小さい画面 / 文字拡大でシートが溢れるのを防ぐ)。
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -312,7 +316,7 @@ class _BorderPromptSheetState extends State<_BorderPromptSheet> {
             const SizedBox(height: 20),
             _primaryButton('保存', _valid ? _submit : null),
           ],
-        ),
+        )),
       ),
     );
   }
@@ -417,7 +421,9 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
         decoration: _sheetDeco(),
-        child: Column(
+        // キーボードが出た状態でも収まらない場合はスクロールで逃がす
+        // (小さい画面 / 文字拡大でシートが溢れるのを防ぐ)。
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -470,7 +476,7 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
                   style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

@@ -405,9 +405,10 @@ void main() {
       await c.load();
     });
 
-    for (final h in <double>[844, 812, 780]) {
+    // 667/568 は iOS 13 対応で残る小画面(iPhone 8 / SE 第1世代)。
+    for (final h in <double>[844, 812, 780, 667, 568]) {
       for (final scale in <double>[1.0, 1.3]) {
-        tester.view.physicalSize = Size(390, h);
+        tester.view.physicalSize = Size(375, h);
         await tester.pumpWidget(MediaQuery(
           data: MediaQueryData(textScaler: TextScaler.linear(scale)),
           child: MaterialApp(

@@ -635,17 +635,23 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   }
 
   // ---------- 操作エリア ----------
+
+  /// 短い画面(iPhone SE 第1世代 / iPhone 8 相当)では固定高の合計が画面に
+  /// 収まらないため、テンキー・入力欄・決定ボタンと余白を詰める。
+  bool get _compact => MediaQuery.sizeOf(context).height < 620;
+
   Widget _controls() {
+    final gap = _compact ? 6.0 : 8.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+      padding: EdgeInsets.fromLTRB(20, _compact ? 8 : 12, 20, _compact ? 10 : 16),
       child: Column(
         children: [
           _operationRow(),
-          const SizedBox(height: 8),
+          SizedBox(height: gap),
           _counterInput(),
-          const SizedBox(height: 8),
+          SizedBox(height: gap),
           _numpad(),
-          const SizedBox(height: 8),
+          SizedBox(height: gap),
           _commitButton(),
         ],
       ),
@@ -790,6 +796,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         rebase: c.isHit,
         error: c.isError,
         placeholder: c.isHit ? '復帰後の数字' : '台の数字',
+        height: _compact ? 52 : 58,
       ),
     );
   }
@@ -799,7 +806,11 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     return (t * 12).remainder(2) < 1 ? 1 : -1;
   }
 
-  Widget _numpad() => Numpad(onKey: c.tapKey);
+  Widget _numpad() => Numpad(
+        onKey: c.tapKey,
+        keyHeight: _compact ? 42 : 48,
+        spacing: _compact ? 6 : 8,
+      );
 
   Widget _commitButton() {
     final hit = c.isHit;
@@ -807,7 +818,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       // ハプティクスはコミット結果(cash/ball/rebase)に応じて _onChange で発火。
       onTap: () => c.commit(),
       child: Container(
-        height: 56,
+        height: _compact ? 50 : 56,
         decoration: BoxDecoration(
           color: hit ? AppColors.hitButton : AppColors.accentDeep,
           borderRadius: BorderRadius.circular(12),

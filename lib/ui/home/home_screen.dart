@@ -314,22 +314,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   overflow: TextOverflow.ellipsis),
               const SizedBox(height: 6),
             ],
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(fmtRate(t.rotationRate),
-                    style: AppTheme.mono(
-                        size: 52, weight: FontWeight.w600, height: 1.0)),
-                const SizedBox(width: 6),
-                Text('回/k',
-                    style: AppTheme.mono(size: 14, color: AppColors.muted)),
-                if (t.borderDiff != null) ...[
-                  const SizedBox(width: 12),
-                  _diffBadge(t.borderDiff!),
+            // 回転率 + 単位 + 差分バッジ。文字拡大時に横へ溢れないよう縮小する。
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(fmtRate(t.rotationRate),
+                      style: AppTheme.mono(
+                          size: 52, weight: FontWeight.w600, height: 1.0)),
+                  const SizedBox(width: 6),
+                  Text('回/k',
+                      style: AppTheme.mono(size: 14, color: AppColors.muted)),
+                  if (t.borderDiff != null) ...[
+                    const SizedBox(width: 12),
+                    _diffBadge(t.borderDiff!),
+                  ],
                 ],
-              ],
+              ),
             ),
             const SizedBox(height: 8),
             Text('${fmtShortDate(t.date)}・${t.totalRotations}回転',
