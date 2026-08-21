@@ -48,16 +48,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _setAddUnit(int unit) async {
     await s.settings.setAddUnitDefault(unit);
+    if (!mounted) return; // 書き込み中に画面を離れた場合
     setState(() => _addUnit = unit);
   }
 
   Future<void> _setBallPrice(double price) async {
     await s.settings.setBallPrice(price);
+    if (!mounted) return;
     setState(() => _ballPrice = price);
   }
 
   Future<void> _setKeepAwake(bool on) async {
     await s.settings.setKeepAwake(on);
+    if (!mounted) return;
     setState(() => _keepAwake = on);
   }
 

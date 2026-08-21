@@ -74,6 +74,7 @@ class _StartScreenState extends State<StartScreen> {
     final recentIds = await s.sessions.recentMachineIds();
     final addUnit = await s.settings.addUnitDefault();
     final ballPrice = await s.settings.ballPrice();
+    if (!mounted) return; // 読み込み中に「←」で離脱した場合
     setState(() {
       _addUnit = addUnit;
       _ballPrice = ballPrice;

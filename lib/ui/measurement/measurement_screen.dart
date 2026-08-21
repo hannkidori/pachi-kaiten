@@ -105,6 +105,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   @override
   void dispose() {
     _c.removeListener(_onChange);
+    _c.dispose(); // 画面と寿命を共にする(遅延通知のタイマーもここで止まる)
     if (widget.keepAwake) WakelockPlus.disable();
     _shake.dispose();
     _chartCtrl.dispose();
@@ -161,16 +162,17 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   /// (黙って消えないよう、破棄したことをホームで通知する)。
   Future<void> _endFlow() async {
     if (_flowBusy || c.isHit) return;
-    final st = c.stats;
-    final result = await showRecoverySheet(
-      context,
-      machineName: c.machine?.name ?? '計測',
-      rateStr: fmtRate(st.rotationRate),
-      totalSpins: st.totalRotations,
-    );
-    if (result == null || !mounted) return; // dismiss = 中断
+    // ガードはシートを開く前に立て、finally で必ず下ろす(リセットと同様)。
     _flowBusy = true;
     try {
+      final st = c.stats;
+      final result = await showRecoverySheet(
+        context,
+        machineName: c.machine?.name ?? '計測',
+        rateStr: fmtRate(st.rotationRate),
+        totalSpins: st.totalRotations,
+      );
+      if (result == null || !mounted) return; // dismiss = 中断
       final trace = await s.sessionService
           .endAndLog(c.session, c.machine, recovery: result.recovery);
       if (!mounted) return;
@@ -185,83 +187,87 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   /// count 0 件のセッションは endAndLog 側で足跡を残さず破棄される。
   Future<void> _resetFlow() async {
     if (_flowBusy || c.isHit) return;
-    final choice = await showResetSheet(
-      context,
-      machineName: c.machine?.name ?? '計測',
-      isQuick: c.isQuick,
-    );
-    if (choice == null || !mounted) return; // シート外タップ = キャンセル
-
+    // ガードはシートを開く前に立てる(終了とリセットの同時タップを防ぐ)。
+    // 途中で例外が出ても finally で必ず下ろす(下ろし損ねると終了もリセットも
+    // 二度と押せなくなる)。
     _flowBusy = true;
-    final ballPrice = c.session.ballPrice;
-    final addUnit = c.session.addUnit;
-    final sameMachine = c.machine;
-    // リセット経路は回収額を一切聞かない(記録したい人は「終了」から)。
-    await s.sessionService.endAndLog(c.session, c.machine, recovery: null);
-    if (!mounted) {
-      _flowBusy = false;
-      return;
-    }
+    try {
+      final choice = await showResetSheet(
+        context,
+        machineName: c.machine?.name ?? '計測',
+        isQuick: c.isQuick,
+      );
+      if (choice == null || !mounted) return; // シート外タップ = キャンセル
 
-    Session? newSession;
-    Machine? newMachine;
-    switch (choice) {
-      case ResetChoice.sameCondition:
-        // 同条件(同 machine_id / クイックなら null のまま)で新セッション。
-        final counter =
-            await showNewCounterSheet(context, machine: sameMachine);
-        if (counter == null || !mounted) {
-          _flowBusy = false;
-          _backHome();
-          return;
-        }
-        newSession = await s.sessionService.start(
-          machine: sameMachine,
-          ballPrice: ballPrice,
-          startCounter: counter,
-          addUnit: addUnit,
-        );
-        newMachine = sameMachine;
-      case ResetChoice.changeMachine:
-        final result = await Navigator.of(context).push<StartResult>(
-          MaterialPageRoute(builder: (_) => StartScreen(services: s)),
-        );
-        if (result == null || !mounted) {
-          _flowBusy = false;
-          _backHome();
-          return;
-        }
-        newSession = result.session;
-        newMachine = result.machine;
-      case ResetChoice.quick:
-        final result = await Navigator.of(context).push<StartResult>(
-          MaterialPageRoute(builder: (_) => QuickStartScreen(services: s)),
-        );
-        if (result == null || !mounted) {
-          _flowBusy = false;
-          _backHome();
-          return;
-        }
-        newSession = result.session;
-        newMachine = result.machine;
-    }
+      final ballPrice = c.session.ballPrice;
+      final addUnit = c.session.addUnit;
+      final sameMachine = c.machine;
+      // リセット経路は回収額を一切聞かない(記録したい人は「終了」から)。
+      await s.sessionService.endAndLog(c.session, c.machine, recovery: null);
+      if (!mounted) return;
 
-    final nc = MeasurementController(
-      service: s.sessionService,
-      session: newSession,
-      machine: newMachine,
-    );
-    await nc.load();
-    if (!mounted) {
+      Session? newSession;
+      Machine? newMachine;
+      switch (choice) {
+        case ResetChoice.sameCondition:
+          // 同条件(同 machine_id / クイックなら null のまま)で新セッション。
+          final counter =
+              await showNewCounterSheet(context, machine: sameMachine);
+          if (counter == null || !mounted) {
+            _backHome();
+            return;
+          }
+          newSession = await s.sessionService.start(
+            machine: sameMachine,
+            ballPrice: ballPrice,
+            startCounter: counter,
+            addUnit: addUnit,
+          );
+          newMachine = sameMachine;
+        case ResetChoice.changeMachine:
+          final result = await Navigator.of(context).push<StartResult>(
+            MaterialPageRoute(builder: (_) => StartScreen(services: s)),
+          );
+          if (result == null || !mounted) {
+            _backHome();
+            return;
+          }
+          newSession = result.session;
+          newMachine = result.machine;
+        case ResetChoice.quick:
+          final result = await Navigator.of(context).push<StartResult>(
+            MaterialPageRoute(builder: (_) => QuickStartScreen(services: s)),
+          );
+          if (result == null || !mounted) {
+            _backHome();
+            return;
+          }
+          newSession = result.session;
+          newMachine = result.machine;
+      }
+
+      final nc = MeasurementController(
+        service: s.sessionService,
+        session: newSession,
+        machine: newMachine,
+      );
+      await nc.load();
+      if (!mounted) {
+        nc.dispose();
+        return;
+      }
+      final old = _c;
+      old.removeListener(_onChange);
+      setState(() => _c = nc);
+      _c.addListener(_onChange);
+      old.dispose(); // 差し替えた旧コントローラは破棄する
+      _lastLen = -1;
+      _lastFeedbackTick = _c.feedbackTick; // 新コントローラに同期
+      _wasError = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _snapChart());
+    } finally {
       _flowBusy = false;
-      return;
     }
-    _c.removeListener(_onChange);
-    setState(() => _c = nc);
-    _c.addListener(_onChange);
-    _lastLen = -1;
-    _flowBusy = false;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _snapChart());
   }
 
   @override

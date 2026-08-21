@@ -60,8 +60,12 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /// ホームの表示内容を読み直す。
+  ///
+  /// スピナーは初回だけ([_loading] の初期値 true)。計測画面から戻るたびに
+  /// 全画面が点滅しないよう、2 回目以降は前の内容を出したまま差し替える。
   Future<void> _refresh() async {
-    setState(() => _loading = true);
+    if (!mounted) return;
     final session = await s.sessions.active();
     _ActiveSummary? summary;
     if (session != null) {

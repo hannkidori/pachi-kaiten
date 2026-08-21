@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../logic/anomaly.dart';
@@ -43,11 +45,28 @@ class MeasurementController extends ChangeNotifier {
   /// 増えないのに消化額だけ倍になる(= 回転率が半減する)のを防ぐ。
   bool _busy = false;
 
+  /// 入力エラー表示を戻すタイマー。dispose 後に発火して破棄済みの
+  /// notifyListeners を呼ばないよう、必ず cancel する。
+  Timer? _errorTimer;
+  bool _disposed = false;
+
   MeasurementController({
     required this.service,
     required this.session,
     required this.machine,
   }) : _unit = session.addUnit;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _errorTimer?.cancel();
+    super.dispose();
+  }
+
+  /// 破棄後は通知しない(非同期処理の完了が dispose を追い越しても安全)。
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
 
   // ---- 公開状態 ----
   List<Entry> get entries => _entries;
@@ -91,7 +110,7 @@ class MeasurementController extends ChangeNotifier {
   /// DB からイベントを読み込む。
   Future<void> load() async {
     _entries = await service.entriesOf(session.id!);
-    notifyListeners();
+    _notify();
   }
 
   // ---- テンキー ----
@@ -102,15 +121,16 @@ class MeasurementController extends ChangeNotifier {
       final next = (_typed + d);
       _typed = next.length > 6 ? next.substring(0, 6) : next;
     }
-    notifyListeners();
+    _notify();
   }
 
   void _flagError() {
     _error = true;
-    notifyListeners();
-    Future.delayed(const Duration(milliseconds: 420), () {
+    _notify();
+    _errorTimer?.cancel();
+    _errorTimer = Timer(const Duration(milliseconds: 420), () {
       _error = false;
-      notifyListeners();
+      _notify();
     });
   }
 
@@ -118,7 +138,7 @@ class MeasurementController extends ChangeNotifier {
   void cycleUnit() {
     if (_hit) return;
     _unit = _unit == 1000 ? 500 : 1000;
-    notifyListeners();
+    _notify();
   }
 
   // ---- 大当り ----
@@ -126,13 +146,13 @@ class MeasurementController extends ChangeNotifier {
     if (_hit) return;
     _hit = true;
     _typed = '';
-    notifyListeners();
+    _notify();
   }
 
   void cancelHit() {
     _hit = false;
     _typed = '';
-    notifyListeners();
+    _notify();
   }
 
   // ---- 決定 ----
@@ -199,7 +219,7 @@ class MeasurementController extends ChangeNotifier {
   void confirmRetry() {
     _confirm = null;
     _typed = '';
-    notifyListeners();
+    _notify();
   }
 
   /// 異常確認シート: このまま確定する(入力値をそのまま追記)。
