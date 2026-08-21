@@ -50,15 +50,20 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
   Future<void> _start() async {
     if (_starting) return;
     setState(() => _starting = true);
-    final counter = int.tryParse(_counter) ?? 0;
-    final session = await s.sessionService.start(
-      machine: null, // クイック計測
-      ballPrice: _ballPrice,
-      startCounter: counter,
-      addUnit: _addUnit,
-    );
-    if (!mounted) return;
-    Navigator.of(context).pop(StartResult(session, null));
+    try {
+      final counter = int.tryParse(_counter) ?? 0;
+      final session = await s.sessionService.start(
+        machine: null, // クイック計測
+        ballPrice: _ballPrice,
+        startCounter: counter,
+        addUnit: _addUnit,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(StartResult(session, null));
+    } catch (_) {
+      // 失敗しても押せないままにしない(成功時は画面ごと閉じるので触らない)。
+      if (mounted) setState(() => _starting = false);
+    }
   }
 
   @override

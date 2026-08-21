@@ -144,15 +144,20 @@ class _StartScreenState extends State<StartScreen> {
       await s.machines.update(machine);
     }
     setState(() => _starting = true);
-    final counter = int.tryParse(_counter) ?? 0;
-    final session = await s.sessionService.start(
-      machine: machine,
-      ballPrice: _ballPrice,
-      startCounter: counter,
-      addUnit: _addUnit,
-    );
-    if (!mounted) return;
-    Navigator.of(context).pop(StartResult(session, machine));
+    try {
+      final counter = int.tryParse(_counter) ?? 0;
+      final session = await s.sessionService.start(
+        machine: machine,
+        ballPrice: _ballPrice,
+        startCounter: counter,
+        addUnit: _addUnit,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(StartResult(session, machine));
+    } catch (_) {
+      // 失敗しても押せないままにしない(成功時は画面ごと閉じるので触らない)。
+      if (mounted) setState(() => _starting = false);
+    }
   }
 
   @override
@@ -433,7 +438,9 @@ class _StartScreenState extends State<StartScreen> {
 
   Widget _startButton() {
     final enabled = _canStart;
-    final label = enabled ? '計測スタート' : '機種を選択してください';
+    // ラベルは「機種が選ばれているか」だけで決める(開始処理中に
+    // 「機種を選択してください」へ化けないように)。
+    final label = _machine == null ? '機種を選択してください' : '計測スタート';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
       child: GestureDetector(
