@@ -9,9 +9,6 @@ class RotationSegment {
     required this.rotations,
     required this.yen,
   });
-
-  /// 千円あたりの回転率(棒の高さ用)。
-  double get ratePer1000 => yen > 0 ? rotations * 1000.0 / yen : 0;
 }
 
 /// グラフ表示用の棒(1 本 = 1000 円分)。加算単位 500 円のときは決定 2 回で 1 本になる。

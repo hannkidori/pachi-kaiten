@@ -49,3 +49,38 @@ flutter analyze
 flutter test
 flutter build apk --debug
 ```
+
+## リリース署名(Android)
+
+`android/key.properties` がある場合だけ本番鍵で署名する(このファイルと鍵は
+git 管理外)。**無い場合はデバッグ鍵のままで、Google Play にはアップロードできない。**
+
+1. 鍵を作る(パスワードは自分で決めて安全に保管する):
+
+   ```sh
+   keytool -genkey -v -keystore ~/pachi-kaiten-upload.jks \
+     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+   ```
+
+2. `android/key.properties` を作る:
+
+   ```properties
+   storeFile=/絶対パス/pachi-kaiten-upload.jks
+   storePassword=（手順1で決めたもの）
+   keyAlias=upload
+   keyPassword=（手順1で決めたもの）
+   ```
+
+3. `flutter build appbundle --release` で署名済みの AAB ができる。
+
+> 鍵を失うと同じアプリとして更新できなくなる。バックアップ必須。
+
+## DB マイグレーション
+
+スキーマを変えるときは `lib/db/database.dart` の `_dbVersion` を上げ、**必ず**
+`_migrations` に手順(`ALTER TABLE` など)を追記する。追記を忘れると起動時に
+例外になり、気付かずにデータを消すことはない。
+
+`_baselineVersion`(現在 6)未満からの更新だけは、リリース前の互換の無い
+スキーマなので作り直す。公開後は常に引き継ぐこと(育てた機種マスタと足跡は
+このアプリの資産そのもの)。

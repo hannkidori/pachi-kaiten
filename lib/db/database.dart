@@ -11,11 +11,25 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._();
 
   static const _dbName = 'pachi_kaiten.db';
-  // リリース前のためマイグレーション履歴は積まず、スキーマ変更時は作り直す。
-  // v0-full が 3 を使っていたため、それより上の値にして旧DBを確実に作り直す。
-  // v5: クイック計測対応で machine_id / machine_name を nullable 化。
-  // v6: 足跡にボーダー差分(border_diff)を追加(ホームの前回比ヒーロー用)。
+
+  /// 現在のスキーマバージョン。
+  /// v5: クイック計測対応で machine_id / machine_name を nullable 化。
+  /// v6: 足跡にボーダー差分(border_diff)を追加(ホームの前回比ヒーロー用)。
   static const _dbVersion = 6;
+
+  /// 「ここから先はデータを引き継ぐ」基準バージョン。
+  ///
+  /// これ未満(= リリース前の実験的スキーマ)からの更新だけは作り直しを許す。
+  /// [_baselineVersion] 以降は必ず [_migrations] に手順を書いて引き継ぐこと。
+  /// ユーザーが育てた機種マスタと足跡を消さないための線引き。
+  static const _baselineVersion = 6;
+
+  /// バージョンごとのマイグレーション手順(v へ上げるときに実行する)。
+  ///
+  /// 例: 7 でカラムを足すなら
+  ///   7: (db) async => db.execute('ALTER TABLE traces ADD COLUMN memo TEXT'),
+  /// スキーマを変えたら _dbVersion を上げ、必ずここに追記する。
+  static final Map<int, Future<void> Function(Database db)> _migrations = {};
 
   Database? _db;
 
@@ -31,11 +45,32 @@ class AppDatabase {
       version: _dbVersion,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: _onCreate,
-      // バージョン差(上げ/下げ問わず)は既存テーブルを全破棄して作り直す。
-      // 旧スキーマ(v0-full の machine_id TEXT 等)との非互換を丸ごと解消する。
-      onUpgrade: (db, _, _) => _recreate(db),
+      onUpgrade: _onUpgrade,
+      // ダウングレード(古いアプリを入れ直した)は現行スキーマを読めないため
+      // 作り直すしかない。通常運用では起こらない。
       onDowngrade: (db, _, _) => _recreate(db),
     );
+  }
+
+  /// バージョンを上げるときの処理。
+  ///
+  /// - [_baselineVersion] 未満から: リリース前の互換の無いスキーマなので作り直す。
+  /// - それ以降: [_migrations] を 1 段ずつ適用してデータを引き継ぐ。
+  ///   手順が未定義のバージョンがあれば、黙って壊れないよう例外にする
+  ///   (開発時に必ず気付ける)。
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < _baselineVersion) {
+      await _recreate(db);
+      return;
+    }
+    for (var v = oldVersion + 1; v <= newVersion; v++) {
+      final step = _migrations[v];
+      if (step == null) {
+        throw StateError('DB v$v のマイグレーションが未定義です'
+            '(_migrations に追記してください)');
+      }
+      await step(db);
+    }
   }
 
   Future<void> _onCreate(Database db, int version) async {

@@ -61,6 +61,10 @@ class _DashedRRectPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
 
+    // dash + gap が 0 以下だと距離が進まず無限ループになる(UI スレッドが固まる)。
+    final step = dash + gap;
+    if (step <= 0) return;
+
     for (final metric in path.computeMetrics()) {
       var distance = 0.0;
       while (distance < metric.length) {

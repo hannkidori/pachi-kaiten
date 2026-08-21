@@ -113,9 +113,6 @@ class SessionService {
     return entries.deleteLastIfCount(sessionId);
   }
 
-  /// 差分計算の起点となる直近カウンタ(次の入力補助・初回判定に使う)。
-  Future<Entry?> lastEntry(int sessionId) => entries.last(sessionId);
-
   /// セッションの全イベント(追記順)。画面のキャッシュ再読込に使う。
   Future<List<Entry>> entriesOf(int sessionId) => entries.bySession(sessionId);
 

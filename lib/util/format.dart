@@ -38,22 +38,3 @@ String fmtShortDate(String yyyyMmDd) {
   if (d == null) return yyyyMmDd;
   return '${d.month}/${d.day}';
 }
-
-const _weekdayJp = ['月', '火', '水', '木', '金', '土', '日'];
-
-/// 月チップのラベル。'2026-07' → '7月'。
-String fmtMonthChip(String yyyyMm) {
-  final mm = int.tryParse(yyyyMm.substring(5, 7)) ?? 0;
-  return '$mm月';
-}
-
-/// 月見出し。'2026-07' → '7月収支'。
-String fmtMonthTitle(String yyyyMm) => '${fmtMonthChip(yyyyMm)}収支';
-
-/// 日ラベル。'2026-07-22' → '7/22 火'。
-String fmtDayLabel(String yyyyMmDd) {
-  final d = DateTime.tryParse(yyyyMmDd);
-  if (d == null) return yyyyMmDd;
-  final w = _weekdayJp[(d.weekday - 1) % 7];
-  return '${d.month}/${d.day} $w';
-}

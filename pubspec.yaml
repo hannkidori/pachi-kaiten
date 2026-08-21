@@ -1,5 +1,5 @@
 name: pachi_kaiten
-description: "A new Flutter project."
+description: "パチンコの回転率をホールで計測し、足跡を自動で残すアプリ(通信ゼロ・広告なし)。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
