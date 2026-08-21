@@ -150,12 +150,15 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   // ---------- 終了 / リセットフロー ----------
 
-  void _backHome() {
-    if (mounted) Navigator.of(context).pop();
+  /// ホームへ戻る。[discarded] が true なら「足跡を残さず破棄した」ことを
+  /// 呼び出し元(ホーム)に伝え、ホーム側で理由を通知する。
+  void _backHome({bool discarded = false}) {
+    if (mounted) Navigator.of(context).pop(discarded);
   }
 
   /// 終了 → 任意回収額(スキップ可)→ 足跡を自動保存 → ホームへ。
-  /// count 0 件のセッションは endAndLog 側で足跡を残さず破棄される。
+  /// 総回転 0 以下のセッションは endAndLog 側で足跡を残さず破棄される
+  /// (黙って消えないよう、破棄したことをホームで通知する)。
   Future<void> _endFlow() async {
     if (_flowBusy || c.isHit) return;
     final st = c.stats;
@@ -167,11 +170,14 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     );
     if (result == null || !mounted) return; // dismiss = 中断
     _flowBusy = true;
-    await s.sessionService
-        .endAndLog(c.session, c.machine, recovery: result.recovery);
-    _flowBusy = false;
-    if (!mounted) return;
-    _backHome();
+    try {
+      final trace = await s.sessionService
+          .endAndLog(c.session, c.machine, recovery: result.recovery);
+      if (!mounted) return;
+      _backHome(discarded: trace == null);
+    } finally {
+      _flowBusy = false;
+    }
   }
 
   /// リセット → シートで 3 択 → 足跡を自動保存(回収額は聞かない)→ 新セッションへ。
@@ -829,7 +835,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   // ---------- 異常確認シート ----------
   Widget _confirmSheet(ConfirmPrompt p) {
     final msg = p.kind == AnomalyKind.negative
-        ? '差分がマイナスです。カウンタの打ち間違いの可能性があります。'
+        ? '回転数が増えていません。カウンタの打ち間違いの可能性があります。'
         : '1000円あたりの回転数として異常に大きい値です。打ち間違いがないか確認してください。';
     return Stack(
       children: [

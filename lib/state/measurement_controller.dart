@@ -39,6 +39,10 @@ class MeasurementController extends ChangeNotifier {
   int _feedbackTick = 0; // コミットのたびに増える(画面が変化を検知する)
   CommitFeedback _lastFeedback = CommitFeedback.none;
 
+  /// DB 書き込み中フラグ。決定の二度押しで同じ入力が 2 回書き込まれ、回転は
+  /// 増えないのに消化額だけ倍になる(= 回転率が半減する)のを防ぐ。
+  bool _busy = false;
+
   MeasurementController({
     required this.service,
     required this.session,
@@ -69,13 +73,6 @@ class MeasurementController extends ChangeNotifier {
   /// コミットのたびに増えるシーケンス。画面はこの変化でハプティクス/演出を発火する。
   int get feedbackTick => _feedbackTick;
   CommitFeedback get lastFeedback => _lastFeedback;
-
-  /// 直近イベントが count でない(start / rebase 直後)= 異常判定をスキップする境界。
-  /// UI のゲートには使わない(計測画面は常に通常状態で開く)。
-  bool get _firstAfterOrigin {
-    final last = _lastEntry;
-    return last == null || last.type != EntryType.count;
-  }
 
   Entry? get _lastEntry => _entries.isEmpty ? null : _entries.last;
 
@@ -140,6 +137,7 @@ class MeasurementController extends ChangeNotifier {
 
   // ---- 決定 ----
   Future<void> commit() async {
+    if (_busy) return; // 二度押しで同じ入力が 2 回書き込まれるのを防ぐ
     if (_typed.isEmpty) {
       _flagError();
       return;
@@ -151,26 +149,28 @@ class MeasurementController extends ChangeNotifier {
     }
 
     if (_hit) {
-      if (n <= 0) {
+      // 大当りでカウンタが 0 に戻る台があるため 0 は正当な復帰値。負のみ弾く。
+      if (n < 0) {
         _flagError();
         return;
       }
-      await service.recordRebase(session, counter: n);
-      _hit = false;
-      _typed = '';
-      _lastFeedback = CommitFeedback.rebase;
-      _feedbackTick++;
-      await load();
+      _busy = true;
+      try {
+        await service.recordRebase(session, counter: n);
+        _hit = false;
+        _typed = '';
+        _lastFeedback = CommitFeedback.rebase;
+        _feedbackTick++;
+        await load();
+      } finally {
+        _busy = false;
+      }
       return;
     }
 
     final prev = lastCounter;
     final delta = n - prev;
-    final kind = detectAnomaly(
-      diff: delta,
-      addUnit: _unit,
-      isFirstAfterOrigin: _firstAfterOrigin,
-    );
+    final kind = detectAnomaly(diff: delta, addUnit: _unit);
     if (kind != AnomalyKind.none) {
       _confirm = ConfirmPrompt(prev, n, delta, kind);
       _flagError();
@@ -180,13 +180,19 @@ class MeasurementController extends ChangeNotifier {
   }
 
   Future<void> _doCommit(int n) async {
-    // 常に 1 単位(_unit 円分)消化として確定する。
-    await service.recordCount(session, counter: n, yen: _unit);
-    _typed = '';
-    _confirm = null;
-    _lastFeedback = CommitFeedback.commit;
-    _feedbackTick++;
-    await load();
+    if (_busy) return;
+    _busy = true;
+    try {
+      // 常に 1 単位(_unit 円分)消化として確定する。
+      await service.recordCount(session, counter: n, yen: _unit);
+      _typed = '';
+      _confirm = null;
+      _lastFeedback = CommitFeedback.commit;
+      _feedbackTick++;
+      await load();
+    } finally {
+      _busy = false;
+    }
   }
 
   /// 異常確認シート: 入力し直す。
@@ -205,11 +211,16 @@ class MeasurementController extends ChangeNotifier {
 
   // ---- 1つ戻す ----
   Future<void> undo() async {
-    if (_hit) return; // count が無ければ undoLastCount は no-op
-    final removed = await service.undoLastCount(session.id!);
-    if (removed) {
-      _typed = '';
-      await load();
+    if (_hit || _busy) return; // count が無ければ undoLastCount は no-op
+    _busy = true;
+    try {
+      final removed = await service.undoLastCount(session.id!);
+      if (removed) {
+        _typed = '';
+        await load();
+      }
+    } finally {
+      _busy = false;
     }
   }
 }

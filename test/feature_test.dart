@@ -28,6 +28,27 @@ void main() {
       expect(await settings.onbCounterDone(), isTrue);
     });
   });
+  group('ボーダー入力の検証(parseBorder)', () {
+    test('Infinity / NaN / 0以下 / 上限超 は弾く', () {
+      // double.tryParse('Infinity') は Infinity を返す。> 0 だけの検査では
+      // 素通りし、期待値計算が NaN になって計測画面とホームが落ちていた。
+      expect(parseBorder('Infinity'), isNull);
+      expect(parseBorder('1e999'), isNull); // これも Infinity になる
+      expect(parseBorder('NaN'), isNull);
+      expect(parseBorder('0'), isNull);
+      expect(parseBorder('-5'), isNull);
+      expect(parseBorder(''), isNull);
+      expect(parseBorder('abc'), isNull);
+      expect(parseBorder('${kBorderMax + 1}'), isNull);
+    });
+
+    test('現実的な値は通す', () {
+      expect(parseBorder('18.3'), closeTo(18.3, 1e-9));
+      expect(parseBorder(' 66 '), closeTo(66.0, 1e-9)); // 前後の空白は無視
+      expect(parseBorder('$kBorderMax'), closeTo(kBorderMax, 1e-9)); // 上限は可
+    });
+  });
+
   group('機種スロット — 育つマスタ(自動換算なし)', () {
     late Database db;
     late MachineRepository repo;

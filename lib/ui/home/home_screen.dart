@@ -109,7 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await controller.load();
     final keepAwake = await s.settings.keepAwake();
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
+    final discarded = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => MeasurementScreen(
         controller: controller,
         services: s,
@@ -117,6 +117,18 @@ class _HomeScreenState extends State<HomeScreen> {
         initialIntent: intent,
       ),
     ));
+    if (!mounted) return;
+    // 回転が記録されていないセッションは足跡を残さず破棄される。黙って消えた
+    // ように見えないよう理由を伝える。
+    if (discarded == true) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('回転が記録されていないため、足跡は残しませんでした',
+            style: AppTheme.sans(size: 12.5, color: AppColors.text)),
+        backgroundColor: AppColors.surface,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ));
+    }
     _refresh();
   }
 

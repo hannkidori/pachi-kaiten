@@ -1,12 +1,41 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/machine.dart';
 import '../../theme/app_theme.dart';
 
 /// 貸玉単価の表示ラベル。4.0→「4円」, 1.0→「1円」。
 String ballLabel(double ballPrice) => ballPrice <= 1.5 ? '1円' : '4円';
+
+/// ボーダー(回/k)の上限。1円パチでも 90 程度なので十分な余裕を見た値。
+const double kBorderMax = 200;
+
+/// 機種名の最大文字数(長すぎる名前によるレイアウト破綻を防ぐ)。
+const int kMachineNameMaxLength = 40;
+
+/// ボーダー入力の解析。不正値は null を返す。
+///
+/// `double.tryParse('Infinity')` は Infinity を返すため、`> 0` だけの検査では
+/// 素通りしてしまい、期待値計算が NaN になって計測画面・ホームが落ちる
+/// (ホームは _loading のまま復帰不能になる)。isFinite と上限で必ず弾く。
+double? parseBorder(String text) {
+  final v = double.tryParse(text.trim());
+  if (v == null || !v.isFinite || v <= 0 || v > kBorderMax) return null;
+  return v;
+}
+
+/// ボーダー入力欄の入力制限(数字と小数点のみ・桁数制限)。
+final List<TextInputFormatter> borderInputFormatters = [
+  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+  LengthLimitingTextInputFormatter(5), // 例: 199.9
+];
+
+/// 機種名入力欄の入力制限(長さのみ)。
+final List<TextInputFormatter> machineNameInputFormatters = [
+  LengthLimitingTextInputFormatter(kMachineNameMaxLength),
+];
 
 /// 機種に対し、貸玉に応じたスロットへボーダーを書き込んだコピーを返す。
 /// 自動換算はしない(4円用・1円用は独立)。
@@ -146,14 +175,12 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
     super.dispose();
   }
 
-  bool get _valid {
-    final b = double.tryParse(_border.text.trim());
-    return _name.text.trim().isNotEmpty && b != null && b > 0;
-  }
+  bool get _valid =>
+      _name.text.trim().isNotEmpty && parseBorder(_border.text) != null;
 
   void _submit() {
-    final b = double.tryParse(_border.text.trim());
-    if (_name.text.trim().isEmpty || b == null || b <= 0) return;
+    final b = parseBorder(_border.text);
+    if (_name.text.trim().isEmpty || b == null) return;
     Navigator.of(context).pop((name: _name.text.trim(), border: b));
   }
 
@@ -182,6 +209,7 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
             TextField(
               controller: _name,
               autofocus: true,
+              inputFormatters: machineNameInputFormatters,
               style: AppTheme.sans(size: 14),
               cursorColor: AppColors.accent,
               onChanged: (_) => setState(() {}),
@@ -195,6 +223,7 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
               controller: _border,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: borderInputFormatters,
               style: AppTheme.mono(size: 16),
               cursorColor: AppColors.accent,
               onChanged: (_) => setState(() {}),
@@ -235,14 +264,11 @@ class _BorderPromptSheetState extends State<_BorderPromptSheet> {
     super.dispose();
   }
 
-  bool get _valid {
-    final b = double.tryParse(_border.text.trim());
-    return b != null && b > 0;
-  }
+  bool get _valid => parseBorder(_border.text) != null;
 
   void _submit() {
-    final b = double.tryParse(_border.text.trim());
-    if (b == null || b <= 0) return;
+    final b = parseBorder(_border.text);
+    if (b == null) return;
     Navigator.of(context).pop(b);
   }
 
@@ -276,6 +302,7 @@ class _BorderPromptSheetState extends State<_BorderPromptSheet> {
               autofocus: true,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: borderInputFormatters,
               style: AppTheme.mono(size: 18),
               cursorColor: AppColors.accent,
               onChanged: (_) => setState(() {}),
@@ -324,8 +351,7 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
   double? _parse(TextEditingController c) {
     final t = c.text.trim();
     if (t.isEmpty) return null;
-    final v = double.tryParse(t);
-    return (v != null && v > 0) ? v : null;
+    return parseBorder(t);
   }
 
   bool get _valid {
@@ -372,6 +398,7 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
         TextField(
           controller: c,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: borderInputFormatters,
           style: AppTheme.mono(size: 16),
           cursorColor: AppColors.accent,
           onChanged: (_) => setState(() {}),
@@ -402,6 +429,7 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
             const SizedBox(height: 6),
             TextField(
               controller: _name,
+              inputFormatters: machineNameInputFormatters,
               style: AppTheme.sans(size: 14),
               cursorColor: AppColors.accent,
               onChanged: (_) => setState(() {}),

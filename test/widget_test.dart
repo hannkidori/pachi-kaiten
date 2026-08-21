@@ -75,32 +75,71 @@ void main() {
 
     test('負差分で異常確認シート(negative)が立つ', () async {
       final c = await startController();
-      // start 直後は判定スキップされるので、まず 100 を確定
-      type(c, '100');
+      // 打ち始め 0 → 20 回転(正常)を確定
+      type(c, '20');
       await c.commit();
       expect(c.confirm, isNull);
 
-      type(c, '90'); // 差分 -10
+      type(c, '10'); // 差分 -10
       await c.commit();
       expect(c.confirm, isNotNull);
       expect(c.confirm!.kind, AnomalyKind.negative);
       // シート表示中はまだ書き込まれていない
       final entries = await entryRepo.bySession(c.session.id!);
-      expect(entries.length, 2); // start + 100 のみ
+      expect(entries.length, 2); // start + 20 のみ
+    });
+
+    test('決定の二度押しでも count は1件だけ(消化額の二重計上を防ぐ)', () async {
+      // 1 回目の DB 書き込み中に 2 回目が走ると、同じ入力がもう 1 件書かれ、
+      // 回転は増えないのに消化額だけ倍 = 回転率が半減していた。
+      final c = await startController();
+      type(c, '20');
+      final first = c.commit();
+      final second = c.commit(); // await せずに二度押し
+      await Future.wait([first, second]);
+
+      final entries = await entryRepo.bySession(c.session.id!);
+      expect(entries.where((e) => e.type == EntryType.count).length, 1);
+      expect(c.stats.consumedYen, 1000); // 2000 にならない
+      expect(c.stats.rotationRate, closeTo(20.0, 1e-9));
+    });
+
+    test('大当り復帰値に 0 を入力できる(カウンタが 0 に戻る台)', () async {
+      final c = await startController();
+      type(c, '20');
+      await c.commit();
+
+      c.startHit();
+      type(c, '0');
+      await c.commit();
+      expect(c.isHit, isFalse); // 弾かれずに確定する
+      final entries = await entryRepo.bySession(c.session.id!);
+      expect(entries.last.type, EntryType.rebase);
+      expect(entries.last.counter, 0);
+    });
+
+    test('最初の入力も検証される(打ち始めの打ち間違いを素通ししない)', () async {
+      final c = await startController(); // 打ち始め 0
+      type(c, '500'); // 1000円で 500 回転はあり得ない
+      await c.commit();
+      expect(c.confirm, isNotNull);
+      expect(c.confirm!.kind, AnomalyKind.tooHigh);
+      // 確認前は書き込まれない(start のみ)
+      expect((await entryRepo.bySession(c.session.id!)).length, 1);
     });
 
     test('確定する(force)でそのまま追記される', () async {
       final c = await startController();
-      type(c, '100');
+      type(c, '20');
       await c.commit();
-      type(c, '150'); // 差分 +50 は 1000円で上限超
+      type(c, '70'); // 差分 +50 は 1000円で上限超
       await c.commit();
       expect(c.confirm!.kind, AnomalyKind.tooHigh);
 
       await c.confirmForce();
       expect(c.confirm, isNull);
       final entries = await entryRepo.bySession(c.session.id!);
-      expect(entries.last.counter, 150);
+      expect(entries.last.counter, 70);
     });
 
     test('大当り→復帰で rebase が書かれ、通常状態に戻る', () async {
@@ -201,16 +240,16 @@ void main() {
 
     test('1つ戻すは直前の count のみ削除する', () async {
       final c = await startController();
-      type(c, '100');
+      type(c, '20');
       await c.commit();
-      type(c, '120');
+      type(c, '40');
       await c.commit();
       expect((await entryRepo.bySession(c.session.id!)).length, 3);
 
       await c.undo();
       final entries = await entryRepo.bySession(c.session.id!);
       expect(entries.length, 2);
-      expect(entries.last.counter, 100);
+      expect(entries.last.counter, 20);
     });
   });
 
