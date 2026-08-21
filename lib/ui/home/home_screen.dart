@@ -441,7 +441,10 @@ class _HomeScreenState extends State<HomeScreen> {
         TextSpan(
             text: '${fmtRate(a.rate)}回/k',
             style: AppTheme.mono(
-                size: 12, weight: FontWeight.w600, color: AppColors.up)),
+                size: 12,
+                weight: FontWeight.w600,
+                // まだ 1 回も決定していない(--.-)ときに緑=好調に見えないよう中立色。
+                color: a.rate == null ? AppColors.muted : AppColors.up)),
       ]),
     );
   }
