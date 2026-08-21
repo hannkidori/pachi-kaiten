@@ -3,31 +3,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pachi_kaiten/models/machine.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
-import 'package:pachi_kaiten/repositories/settings_repository.dart';
 import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/test_db.dart';
 
 void main() {
-  group('オンボーディング表示フラグ', () {
-    late Database db;
-    late SettingsRepository settings;
-
-    setUp(() async {
-      db = await openTestDb();
-      settings = SettingsRepository(db);
-    });
-    tearDown(() async => db.close());
-
-    test('初期は未表示。set で表示済みになる', () async {
-      // 初期(フラグ未設定)は未表示。
-      expect(await settings.onbCounterDone(), isFalse);
-
-      await settings.setOnbCounterDone();
-      expect(await settings.onbCounterDone(), isTrue);
-    });
-  });
   group('ボーダー入力の検証(parseBorder)', () {
     test('Infinity / NaN / 0以下 / 上限超 は弾く', () {
       // double.tryParse('Infinity') は Infinity を返す。> 0 だけの検査では

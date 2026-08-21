@@ -8,7 +8,6 @@ class SettingsRepository {
   static const kAddUnit = 'add_unit_default';
   static const kKeepAwake = 'keep_awake';
   static const kBallPrice = 'ball_price'; // グローバル貸玉(4.0 / 1.0)
-  static const kOnbCounter = 'onb_counter'; // 初回の計測画面スポットライト済み
 
   Future<String?> getString(String key) async {
     final rows =
@@ -46,8 +45,4 @@ class SettingsRepository {
 
   Future<void> setBallPrice(double price) =>
       setString(kBallPrice, price.toString());
-
-  // ---- オンボーディング(文脈内スポットライト)の表示済みフラグ ----
-  Future<bool> onbCounterDone() async => (await getString(kOnbCounter)) == '1';
-  Future<void> setOnbCounterDone() => setString(kOnbCounter, '1');
 }

@@ -268,7 +268,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: MeasurementScreen(
-          controller: c, services: services, keepAwake: false, enableOnboarding: false),
+          controller: c, services: services, keepAwake: false),
     ));
     await tester.pump();
 
@@ -413,7 +413,7 @@ void main() {
           data: MediaQueryData(textScaler: TextScaler.linear(scale)),
           child: MaterialApp(
             home: MeasurementScreen(
-                controller: c, services: services, keepAwake: false, enableOnboarding: false),
+                controller: c, services: services, keepAwake: false),
           ),
         ));
         await tester.pump();
@@ -435,7 +435,7 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: MeasurementScreen(
-          controller: c, services: services, keepAwake: false, enableOnboarding: false),
+          controller: c, services: services, keepAwake: false),
     ));
     await tester.pump();
 
