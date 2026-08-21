@@ -65,7 +65,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _editMachine(Machine m) async {
-    final res = await showMachineEdit(context, machine: m);
+    final res = await showMachineEdit(
+      context,
+      machine: m,
+      // 自分以外の機種名(同名への改名を防ぐ)。
+      existingNames:
+          _machines.where((x) => x.id != m.id).map((x) => x.name).toList(),
+    );
     if (res == null) return;
     if (res.deleted) {
       if (m.id != null) await s.machines.delete(m.id!);

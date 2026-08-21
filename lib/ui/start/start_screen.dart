@@ -100,8 +100,14 @@ class _StartScreenState extends State<StartScreen> {
   String _stamp() => DateTime.now().toIso8601String();
 
   /// 新しい機種を登録(名前 + 現在の貸玉スロットのボーダー)→ 選択状態にする。
+  /// 検索文字列は名前欄に引き継ぐ(「「◯◯」で登録」の表示どおりに動かす)。
   Future<void> _register() async {
-    final res = await showRegisterMachine(context, ballPrice: _ballPrice);
+    final res = await showRegisterMachine(
+      context,
+      ballPrice: _ballPrice,
+      initialName: _query.trim().isEmpty ? null : _query.trim(),
+      existingNames: _machines.map((m) => m.name).toList(),
+    );
     if (res == null) return;
     final base = Machine(name: res.name, updatedAt: _stamp());
     final saved =

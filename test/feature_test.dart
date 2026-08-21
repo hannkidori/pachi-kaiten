@@ -49,6 +49,23 @@ void main() {
     });
   });
 
+  group('機種名の重複チェック(isDuplicateName)', () {
+    const existing = ['P大海物語5', 'Pエヴァ15'];
+
+    test('同名(前後空白・大小文字の違いを無視)は重複', () {
+      expect(isDuplicateName('P大海物語5', existing), isTrue);
+      expect(isDuplicateName('  P大海物語5  ', existing), isTrue);
+      expect(isDuplicateName('pエヴァ15'.toUpperCase(), ['PエヴァSP']), isFalse);
+      expect(isDuplicateName('pエヴァ15', ['Pエヴァ15']), isTrue);
+    });
+
+    test('別名・空文字は重複でない', () {
+      expect(isDuplicateName('P北斗の拳', existing), isFalse);
+      expect(isDuplicateName('', existing), isFalse);
+      expect(isDuplicateName('   ', existing), isFalse);
+    });
+  });
+
   group('機種スロット — 育つマスタ(自動換算なし)', () {
     late Database db;
     late MachineRepository repo;

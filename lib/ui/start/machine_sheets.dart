@@ -47,16 +47,32 @@ Machine applyBorder(Machine m, double ballPrice, double value, String stamp) {
 
 /// 新しい機種を登録する(名前 + 現在の貸玉スロットのボーダー1値)。
 /// 確定すると (name, border) を返す。キャンセルは null。
+///
+/// [initialName] は検索文字列の引き継ぎ(「「◯◯」で登録」の約束を果たす)。
+/// [existingNames] は重複登録を防ぐための既存機種名。
 Future<({String name, double border})?> showRegisterMachine(
   BuildContext context, {
   required double ballPrice,
+  String? initialName,
+  List<String> existingNames = const [],
 }) {
   return showModalBottomSheet<({String name, double border})>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _MachineFormSheet(ballPrice: ballPrice),
+    builder: (_) => _MachineFormSheet(
+      ballPrice: ballPrice,
+      initialName: initialName,
+      existingNames: existingNames,
+    ),
   );
+}
+
+/// 機種名が既存と重複しているか(前後空白と大小文字を無視して比較)。
+bool isDuplicateName(String name, List<String> existingNames) {
+  final n = name.trim().toLowerCase();
+  if (n.isEmpty) return false;
+  return existingNames.any((e) => e.trim().toLowerCase() == n);
 }
 
 /// 機種編集の結果(設定画面)。[saved] は保存後の機種、[deleted] なら削除された。
@@ -70,12 +86,14 @@ class MachineEditResult {
 Future<MachineEditResult?> showMachineEdit(
   BuildContext context, {
   required Machine machine,
+  List<String> existingNames = const [], // 改名時の重複チェック用(自分は除く)
 }) {
   return showModalBottomSheet<MachineEditResult>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _MachineEditSheet(machine: machine),
+    builder: (_) =>
+        _MachineEditSheet(machine: machine, existingNames: existingNames),
   );
 }
 
@@ -158,14 +176,24 @@ Widget _primaryButton(String label, VoidCallback? onTap) {
 /// 新規登録フォーム(名前 + ボーダー1値)。
 class _MachineFormSheet extends StatefulWidget {
   final double ballPrice;
-  const _MachineFormSheet({required this.ballPrice});
+  final String? initialName;
+  final List<String> existingNames;
+  const _MachineFormSheet({
+    required this.ballPrice,
+    this.initialName,
+    this.existingNames = const [],
+  });
 
   @override
   State<_MachineFormSheet> createState() => _MachineFormSheetState();
 }
 
 class _MachineFormSheetState extends State<_MachineFormSheet> {
-  final _name = TextEditingController();
+  late final TextEditingController _name = TextEditingController(
+    // 検索文字列を引き継ぐ(カーソルは末尾に置く)。
+    text: widget.initialName ?? '',
+  )..selection = TextSelection.collapsed(
+      offset: (widget.initialName ?? '').length);
   final _border = TextEditingController();
 
   @override
@@ -175,13 +203,18 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
     super.dispose();
   }
 
+  /// 同名の機種が既に登録されているか(重複登録を防ぐ)。
+  bool get _duplicate => isDuplicateName(_name.text, widget.existingNames);
+
   bool get _valid =>
-      _name.text.trim().isNotEmpty && parseBorder(_border.text) != null;
+      _name.text.trim().isNotEmpty &&
+      !_duplicate &&
+      parseBorder(_border.text) != null;
 
   void _submit() {
-    final b = parseBorder(_border.text);
-    if (_name.text.trim().isEmpty || b == null) return;
-    Navigator.of(context).pop((name: _name.text.trim(), border: b));
+    if (!_valid) return;
+    Navigator.of(context)
+        .pop((name: _name.text.trim(), border: parseBorder(_border.text)!));
   }
 
   @override
@@ -217,6 +250,11 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
               onChanged: (_) => setState(() {}),
               decoration: _fieldDeco('例: ハネデリ'),
             ),
+            if (_duplicate) ...[
+              const SizedBox(height: 6),
+              Text('同じ名前の機種が既に登録されています',
+                  style: AppTheme.sans(size: 11, color: AppColors.down)),
+            ],
             const SizedBox(height: 14),
             Text('ボーダー (回/k・${ballLabel(widget.ballPrice)})',
                 style: AppTheme.sans(size: 11, color: AppColors.muted)),
@@ -325,7 +363,8 @@ class _BorderPromptSheetState extends State<_BorderPromptSheet> {
 /// 機種の編集・削除フォーム(名前 + 4円/1円ボーダーの両スロット)。
 class _MachineEditSheet extends StatefulWidget {
   final Machine machine;
-  const _MachineEditSheet({required this.machine});
+  final List<String> existingNames;
+  const _MachineEditSheet({required this.machine, this.existingNames = const []});
 
   @override
   State<_MachineEditSheet> createState() => _MachineEditSheetState();
@@ -358,13 +397,16 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
     return parseBorder(t);
   }
 
+  /// 他の機種と同名へ改名しようとしていないか。
+  bool get _duplicate => isDuplicateName(_name.text, widget.existingNames);
+
   bool get _valid {
     final name = _name.text.trim();
     // ボーダー欄が入力されている場合は正の数であること。少なくとも1スロット必須。
     final b4ok = _b4.text.trim().isEmpty || _parse(_b4) != null;
     final b1ok = _b1.text.trim().isEmpty || _parse(_b1) != null;
     final atLeastOne = _parse(_b4) != null || _parse(_b1) != null;
-    return name.isNotEmpty && b4ok && b1ok && atLeastOne;
+    return name.isNotEmpty && !_duplicate && b4ok && b1ok && atLeastOne;
   }
 
   void _save() {
@@ -441,6 +483,11 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
               onChanged: (_) => setState(() {}),
               decoration: _fieldDeco('機種名'),
             ),
+            if (_duplicate) ...[
+              const SizedBox(height: 6),
+              Text('同じ名前の機種が既に登録されています',
+                  style: AppTheme.sans(size: 11, color: AppColors.down)),
+            ],
             const SizedBox(height: 14),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -193,7 +193,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _traceRow(Trace t) {
     final isQuick = t.machineName == null;
-    final evColor = (t.evYen ?? 0) >= 0 ? AppColors.up : AppColors.down;
+    // EV 不明(ボーダー未登録)は緑=プラスに見えないよう中立色にする。
+    final evColor = t.evYen == null
+        ? AppColors.muted
+        : (t.evYen! >= 0 ? AppColors.up : AppColors.down);
     return GestureDetector(
       onTap: () => _delete(t),
       behavior: HitTestBehavior.opaque,
