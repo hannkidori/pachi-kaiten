@@ -61,7 +61,7 @@ class ReviewPrompt {
 
   ReviewPrompt({required this.entries, required this.settings});
 
-  /// 計測が終わって足跡が 1 件保存された直後に呼ぶ。依頼を投げたら true。
+  /// 計測が終わって履歴が 1 件保存された直後に呼ぶ。依頼を投げたら true。
   /// 条件を満たさなければ何もしない(計測中には呼ばない)。
   Future<bool> onMeasurementEnded(Trace trace) async {
     if (!Platform.isIOS) return false; // Android は対象外

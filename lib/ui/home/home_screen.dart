@@ -42,7 +42,7 @@ class _ActiveSummary {
 class _HomeScreenState extends State<HomeScreen> {
   AppServices get s => widget.services;
   _ActiveSummary? _active;
-  Trace? _latest; // 前回の計測(最新の足跡)
+  Trace? _latest; // 前回の計測(最新の履歴)
   bool _loading = true;
 
   // 「破棄」の 2 度タップ確認。1 回目で armed → 2.6s で解除。
@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await controller.load();
     final keepAwake = await s.settings.keepAwake();
     if (!mounted) return;
-    // 足跡が 1 件増えたか(=計測を終えたか)を id で見分ける。単に「戻る」で
+    // 履歴が 1 件増えたか(=計測を終えたか)を id で見分ける。単に「戻る」で
     // 抜けた場合と区別してレビュー依頼の判定に使う。
     final beforeTraceId = _latest?.id;
     final discarded = await Navigator.of(context).push<bool>(MaterialPageRoute(
@@ -126,11 +126,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ));
     if (!mounted) return;
-    // 回転が記録されていないセッションは足跡を残さず破棄される。黙って消えた
+    // 回転が記録されていないセッションは履歴を残さず破棄される。黙って消えた
     // ように見えないよう理由を伝える。
     if (discarded == true) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('回転が記録されていないため、足跡は残しませんでした',
+        content: Text('回転が記録されていないため、履歴は残しませんでした',
             style: AppTheme.sans(size: 12.5, color: AppColors.text)),
         backgroundColor: AppColors.surface,
         behavior: SnackBarBehavior.floating,
@@ -321,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: AppTheme.mono(
                     size: 52, weight: FontWeight.w600, color: AppColors.mutedDark)),
             const SizedBox(height: 10),
-            Text('計測を終えると、ここに足跡が残ります',
+            Text('計測を終えると、ここに履歴が残ります',
                 style: AppTheme.sans(size: 12, color: AppColors.mutedDark)),
           ] else ...[
             // クイック計測(機種名なし)は機種名の行を出さない。
@@ -529,12 +529,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 最下部の 2 リンク(足跡 | 設定)。控えめだが 44px 以上で確実に押せる。
+  /// 最下部の 2 リンク(履歴 | 設定)。控えめだが 44px 以上で確実に押せる。
   Widget _bottomLinks() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _bottomLink(Icons.history, '足跡', _openHistory),
+        _bottomLink(Icons.history, '履歴', _openHistory),
         _linkDivider(),
         _bottomLink(Icons.grid_view_rounded, '機種', _openMachines),
         _linkDivider(),

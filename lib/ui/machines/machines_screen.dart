@@ -218,7 +218,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
           border: Border.all(color: AppColors.border),
           borderRadius: BorderRadius.circular(10),
         ),
-        // 2 段組み(足跡と同じ形)。マスタ管理は名前の見分けが最優先なので、
+        // 2 段組み(履歴と同じ形)。マスタ管理は名前の見分けが最優先なので、
         // 機種名に横幅を全部使わせ、ボーダーは 2 段目に小さく置く。
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

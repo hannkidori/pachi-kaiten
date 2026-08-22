@@ -6,7 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../util/format.dart';
 import '../widgets/glow_background.dart';
 
-/// 足跡。セッション終了時に自動保存された 1 行レコードの時系列リスト(新しい順)。
+/// 履歴。セッション終了時に自動保存された 1 行レコードの時系列リスト(新しい順)。
 /// 集計・グラフ・フィルタ・編集は一切なし。行タップで削除のみ。
 class HistoryScreen extends StatefulWidget {
   final AppServices services;
@@ -62,10 +62,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('この足跡を削除しますか',
+            Text('この履歴を削除しますか',
                 style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
             const SizedBox(height: 8),
-            Text('削除した足跡は元に戻せません',
+            Text('削除した履歴は元に戻せません',
                 style: AppTheme.sans(size: 12, color: AppColors.muted)),
             const SizedBox(height: 18),
             GestureDetector(
@@ -136,7 +136,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back, color: AppColors.textDim),
           ),
-          Text('足跡', style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
+          Text('履歴', style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
           const Spacer(),
           if (_traces.isNotEmpty)
             Text('${_traces.length}件',
@@ -150,14 +150,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
-        child: Text('計測を終えると、ここに足跡が残ります',
+        child: Text('計測を終えると、ここに履歴が残ります',
             textAlign: TextAlign.center,
             style: AppTheme.sans(size: 13, color: AppColors.mutedDark)),
       ),
     );
   }
 
-  /// 月ラベルを挟みつつ足跡行を並べる。
+  /// 月ラベルを挟みつつ履歴行を並べる。
   Widget _list() {
     final items = <Widget>[];
     String? lastMonth;
@@ -237,7 +237,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 TextSpan(
                     text: '・${t.totalRotations}回転',
                     style: AppTheme.mono(size: 12, color: AppColors.muted)),
-                // クイック計測(機種なし)の足跡は EV を表示しない。
+                // クイック計測(機種なし)の履歴は EV を表示しない。
                 if (!isQuick)
                   TextSpan(
                       text:

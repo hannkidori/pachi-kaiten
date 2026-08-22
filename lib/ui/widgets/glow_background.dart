@@ -60,7 +60,7 @@ class GlowBackground extends StatelessWidget {
         centerYFrac = 0.0,
         stop = 0.55;
 
-  /// 足跡 / 設定(一覧系)。
+  /// 履歴 / 設定(一覧系)。
   const GlowBackground.list({super.key, required this.child})
       : alpha = 0.07,
         radiusXFrac = 1.2,

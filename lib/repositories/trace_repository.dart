@@ -2,7 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/trace.dart';
 
-/// 足跡ログの永続化。セッション終了時に 1 行追記し、履歴は新しい順で読む。
+/// 履歴ログの永続化。セッション終了時に 1 行追記し、履歴は新しい順で読む。
 /// 編集はできず、削除のみ(履歴画面の行タップ)。
 class TraceRepository {
   final Database db;
@@ -23,7 +23,7 @@ class TraceRepository {
     await db.delete('traces', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// 総回転 0 以下の空足跡を削除する(旧バグで残った不正レコードの一掃)。
+  /// 総回転 0 以下の空履歴を削除する(旧バグで残った不正レコードの一掃)。
   /// 削除件数を返す。起動時に一度呼ぶ。
   Future<int> deleteEmpty() async {
     return db.delete('traces', where: 'total_rotations <= 0');

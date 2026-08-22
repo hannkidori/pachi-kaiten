@@ -500,7 +500,7 @@ void main() {
     expect(find.text('P大海物語5のままリセット'), findsOneWidget); // 主役
     expect(find.text('機種を変えてリセット'), findsOneWidget); // 従
     expect(find.text('機種なしでリセット'), findsOneWidget); // 従(小)
-    expect(find.text('ここまでの計測は足跡に残ります'), findsOneWidget);
+    expect(find.text('ここまでの計測は履歴に残ります'), findsOneWidget);
   });
 
   testWidgets('リセットシート: クイック中は2択(「機種なしでリセット」を出さない)', (tester) async {

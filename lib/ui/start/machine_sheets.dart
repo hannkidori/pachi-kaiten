@@ -519,7 +519,7 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
             ),
             const SizedBox(height: 8),
             Center(
-              child: Text('削除しても足跡は消えません',
+              child: Text('削除しても履歴は消えません',
                   style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
             ),
           ],

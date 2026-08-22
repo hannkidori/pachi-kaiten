@@ -73,7 +73,7 @@ Future<ResetChoice?> showResetSheet(
           ],
           const SizedBox(height: 12),
           Center(
-            child: Text('ここまでの計測は足跡に残ります',
+            child: Text('ここまでの計測は履歴に残ります',
                 style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark)),
           ),
         ],
@@ -193,7 +193,7 @@ class _RecoverySheetState extends State<_RecoverySheet> {
             ),
           ],
           const SizedBox(height: 14),
-          // 主役 = 終了する(回収額なしで足跡保存)。入力があれば P/L も記録。
+          // 主役 = 終了する(回収額なしで履歴保存)。入力があれば P/L も記録。
           _gradientButton(
             ctaLabel,
             height: 58,

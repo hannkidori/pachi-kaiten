@@ -30,8 +30,8 @@ void main() {
   });
   tearDown(() async => db.close());
 
-  group('endAndLog — 足跡の自動保存', () {
-    test('終了(回収入力あり): 足跡が1件保存され P/L を含む', () async {
+  group('endAndLog — 履歴の自動保存', () {
+    test('終了(回収入力あり): 履歴が1件保存され P/L を含む', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       await service.recordCount(s, counter: 20);
       await service.recordCount(s, counter: 40); // 消化2000
@@ -65,7 +65,7 @@ void main() {
       expect((await traceRepo.allDesc()).single.plYen, isNull);
     });
 
-    test('クイック計測(機種なし): 足跡は machineName=null・EV=null で保存', () async {
+    test('クイック計測(機種なし): 履歴は machineName=null・EV=null で保存', () async {
       // 機種を選ばず計測 → machineId null・ボーダーなし。
       final s = await service.start(
           machine: null, ballPrice: 4.0, startCounter: 0);
@@ -81,7 +81,7 @@ void main() {
       expect(trace.borderDiff, isNull); // ボーダー差分も出ない
       expect(trace.plYen, 3000 - 2000); // 回収-消化 は出る
 
-      // 足跡(時系列)に 1 件だけ残り、EV は null のまま。
+      // 履歴(時系列)に 1 件だけ残り、EV は null のまま。
       final all = await traceRepo.allDesc();
       expect(all.length, 1);
       expect(all.single.machineName, isNull);
@@ -90,7 +90,7 @@ void main() {
 
     test('終了3経路(終了/リセット/復帰終了)は同じ endAndLog を通り各1件残す', () async {
       // UI 上の 3 経路(終了ボタン / リセット / 復帰カード終了)は全て endAndLog に
-      // 集約される。3 セッションを順に終了すると足跡が 3 件たまる。
+      // 集約される。3 セッションを順に終了すると履歴が 3 件たまる。
       for (var i = 0; i < 3; i++) {
         final s =
             await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
@@ -102,7 +102,7 @@ void main() {
       expect(await sessionRepo.active(), isNull); // 進行中は残らない
     });
 
-    test('count 0件のセッションは足跡を残さず破棄される', () async {
+    test('count 0件のセッションは履歴を残さず破棄される', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       // count を 1 件も打たずに終了。
       final trace = await service.endAndLog(s, _a, recovery: 1000);
@@ -115,7 +115,7 @@ void main() {
   });
 
   // ---------- リセット(次の台へ急ぐ出口。回収額は聞かない) ----------
-  group('リセット3択: endAndLog(足跡保存)→新セッションの機種引き継ぎ', () {
+  group('リセット3択: endAndLog(履歴保存)→新セッションの機種引き継ぎ', () {
     // リセットは回収額を聞かない=常に recovery なし。3 択それぞれの「新セッションの
     // machine_id」を検証する。UI の差は「次に開始する machine」だけなので、
     // service レベルで endAndLog→start の連結として検証する。
@@ -128,7 +128,7 @@ void main() {
       final trace = await service.endAndLog(s1, old); // recovery なし
       expect(trace, isNotNull);
       expect(trace!.plYen, isNull); // リセットは P/L を記録しない
-      // 旧は closed、足跡に 1 件。
+      // 旧は closed、履歴に 1 件。
       expect((await sessionRepo.byId(s1.id!))!.state, SessionState.closed);
       return service.start(
           machine: next, ballPrice: 4.0, startCounter: 0, addUnit: s1.addUnit);
@@ -158,7 +158,7 @@ void main() {
       expect((await traceRepo.allDesc()).length, 1);
     });
 
-    test('クイック中の同条件リセット: 足跡は machineName null のまま', () async {
+    test('クイック中の同条件リセット: 履歴は machineName null のまま', () async {
       final s2 = await resetTo(_a, null);
       // s2(クイック)を計測して更にリセット(同条件=クイックのまま)。
       await service.recordCount(s2, counter: 20);
@@ -170,10 +170,10 @@ void main() {
       expect(quickTrace.machineName, isNull);
     });
 
-    test('count 0件のリセットは足跡を残さず破棄して次へ', () async {
+    test('count 0件のリセットは履歴を残さず破棄して次へ', () async {
       final s1 =
           await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
-      // 1 度も決定せずリセット → endAndLog は破棄(足跡なし)。
+      // 1 度も決定せずリセット → endAndLog は破棄(履歴なし)。
       final trace = await service.endAndLog(s1, _a);
       expect(trace, isNull);
       expect(await traceRepo.allDesc(), isEmpty);
@@ -185,12 +185,12 @@ void main() {
     });
   });
 
-  // ---------- 空セッションは足跡を作らない(実機バグ #1 の回帰防止) ----------
-  group('空セッションは3経路とも足跡を作らない', () {
+  // ---------- 空セッションは履歴を作らない(実機バグ #1 の回帰防止) ----------
+  group('空セッションは3経路とも履歴を作らない', () {
     // 終了 / リセット / 復帰カード終了 は全て endAndLog に集約されるため、
     // endAndLog が空セッションを破棄することで 3 経路すべてが担保される。
 
-    /// endAndLog が破棄(null)し、足跡もセッションも残らないことを検証。
+    /// endAndLog が破棄(null)し、履歴もセッションも残らないことを検証。
     Future<void> expectDiscarded(Session s, Machine? machine) async {
       final t = await service.endAndLog(s, machine);
       expect(t, isNull);
@@ -199,13 +199,13 @@ void main() {
       expect(await sessionRepo.active(), isNull);
     }
 
-    test('決定を一度も押していない(count 0件)→ 足跡なし', () async {
+    test('決定を一度も押していない(count 0件)→ 履歴なし', () async {
       final s =
           await service.start(machine: _a, ballPrice: 4.0, startCounter: 100);
       await expectDiscarded(s, _a);
     });
 
-    test('打ち始め値と同値で1回だけ決定(count有・総回転0)→ 足跡なし', () async {
+    test('打ち始め値と同値で1回だけ決定(count有・総回転0)→ 履歴なし', () async {
       // 最初の決定は異常値判定をスキップするため delta 0 の count が作られるが、
       // 総回転 0 なので空セッションとして破棄される。
       final s =
@@ -214,14 +214,14 @@ void main() {
       await expectDiscarded(s, _a);
     });
 
-    test('クイック計測でも総回転0なら足跡なし(実機で見えた 計測 0.0回/k の再現)', () async {
+    test('クイック計測でも総回転0なら履歴なし(実機で見えた 計測 0.0回/k の再現)', () async {
       final s =
           await service.start(machine: null, ballPrice: 4.0, startCounter: 50);
       await service.recordCount(s, counter: 50); // delta 0
       await expectDiscarded(s, null);
     });
 
-    test('1回でも正の回転があれば足跡は残る(境界の確認)', () async {
+    test('1回でも正の回転があれば履歴は残る(境界の確認)', () async {
       final s =
           await service.start(machine: _a, ballPrice: 4.0, startCounter: 100);
       await service.recordCount(s, counter: 101); // delta 1
@@ -232,13 +232,13 @@ void main() {
   });
 
   group('TraceRepository.deleteEmpty(旧不正レコードの一掃)', () {
-    test('総回転0以下の足跡だけを削除する', () async {
-      // 正常な足跡を1件作る。
+    test('総回転0以下の履歴だけを削除する', () async {
+      // 正常な履歴を1件作る。
       final s =
           await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       await service.recordCount(s, counter: 20);
       await service.endAndLog(s, _a);
-      // 旧バグ相当の空足跡を直接1件差し込む。
+      // 旧バグ相当の空履歴を直接1件差し込む。
       await traceRepo.insert(Trace(
         date: '2026-07-28',
         machineName: null,

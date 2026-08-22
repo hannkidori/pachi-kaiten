@@ -3,7 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/session.dart';
 
 /// セッションの永続化。開始・終了(回収額確定)・復帰カード用のアクティブ取得を担う。
-/// 履歴は足跡ログ(traces)側に集約したため、集計系クエリはここには持たない。
+/// 履歴は履歴ログ(traces)側に集約したため、集計系クエリはここには持たない。
 class SessionRepository {
   final Database db;
   SessionRepository(this.db);

@@ -78,9 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _hint('機種のボーダーは貸玉ごとに登録できます'),
                   _keepAwakeRow(),
                   _hint('計測中、画面を消灯しません'),
-                  _section('このアプリ'),
-                  _hint('広告なし・通信なし。計測データはこの端末の中だけにあります'),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 26),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text('パチ回転計 v1.0.0',

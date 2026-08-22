@@ -125,14 +125,14 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   // ---------- 終了 / リセットフロー ----------
 
-  /// ホームへ戻る。[discarded] が true なら「足跡を残さず破棄した」ことを
+  /// ホームへ戻る。[discarded] が true なら「履歴を残さず破棄した」ことを
   /// 呼び出し元(ホーム)に伝え、ホーム側で理由を通知する。
   void _backHome({bool discarded = false}) {
     if (mounted) Navigator.of(context).pop(discarded);
   }
 
-  /// 終了 → 任意回収額(スキップ可)→ 足跡を自動保存 → ホームへ。
-  /// 総回転 0 以下のセッションは endAndLog 側で足跡を残さず破棄される
+  /// 終了 → 任意回収額(スキップ可)→ 履歴を自動保存 → ホームへ。
+  /// 総回転 0 以下のセッションは endAndLog 側で履歴を残さず破棄される
   /// (黙って消えないよう、破棄したことをホームで通知する)。
   Future<void> _endFlow() async {
     if (_flowBusy || c.isHit) return;
@@ -156,9 +156,9 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     }
   }
 
-  /// リセット → シートで 3 択 → 足跡を自動保存(回収額は聞かない)→ 新セッションへ。
+  /// リセット → シートで 3 択 → 履歴を自動保存(回収額は聞かない)→ 新セッションへ。
   /// 実戦での「次の台へ急ぐ」出口。丁寧な出口は「終了」が担う。
-  /// count 0 件のセッションは endAndLog 側で足跡を残さず破棄される。
+  /// count 0 件のセッションは endAndLog 側で履歴を残さず破棄される。
   Future<void> _resetFlow() async {
     if (_flowBusy || c.isHit) return;
     // ガードはシートを開く前に立てる(終了とリセットの同時タップを防ぐ)。

@@ -14,7 +14,7 @@ Future<void> main() async {
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
   try {
     final services = await AppServices.open();
-    // 旧バグで残った空足跡(総回転0)を一掃する(起動時に一度)。
+    // 旧バグで残った空履歴(総回転0)を一掃する(起動時に一度)。
     await services.traces.deleteEmpty();
     runApp(PachiApp(services: services));
   } catch (e) {
