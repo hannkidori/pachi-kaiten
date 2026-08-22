@@ -154,9 +154,12 @@ class SessionService {
   ///   回収額 [recovery] を渡せば P/L(回収 − 消化額)も記録、null ならスキップ扱い。
   ///
   /// 保存した [Trace] を返す(破棄した場合は null)。
+  /// [invest] は実際に入れた現金、[recovery] は換金額。収支は両方揃ったときだけ
+  /// 記録する(消化額は持ち玉で回した分も含むので収支の基準には使えない)。
   Future<Trace?> endAndLog(
     Session session,
     Machine? machine, {
+    int? invest,
     int? recovery,
   }) async {
     final list = await entries.bySession(session.id!);
@@ -179,10 +182,10 @@ class SessionService {
       rotationRate: stats.rotationRate,
       borderDiff: stats.borderDiff,
       totalRotations: stats.totalRotations,
-      evYen: stats.expectedValue?.round(),
       consumedYen: stats.consumedYen,
       bonusCount: stats.bonusCount,
-      plYen: recovery == null ? null : recovery - stats.consumedYen,
+      investYen: invest,
+      plYen: (invest == null || recovery == null) ? null : recovery - invest,
       createdAt: _iso(now),
     );
     final id = await traces.insert(trace);
@@ -193,9 +196,9 @@ class SessionService {
       rotationRate: trace.rotationRate,
       borderDiff: trace.borderDiff,
       totalRotations: trace.totalRotations,
-      evYen: trace.evYen,
       consumedYen: trace.consumedYen,
       bonusCount: trace.bonusCount,
+      investYen: trace.investYen,
       plYen: trace.plYen,
       createdAt: trace.createdAt,
     );

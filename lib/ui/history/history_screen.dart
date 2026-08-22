@@ -193,10 +193,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _traceRow(Trace t) {
     final isQuick = t.machineName == null;
-    // EV 不明(ボーダー未登録)は緑=プラスに見えないよう中立色にする。
-    final evColor = t.evYen == null
-        ? AppColors.muted
-        : (t.evYen! >= 0 ? AppColors.up : AppColors.down);
     return GestureDetector(
       onTap: () => _delete(t),
       behavior: HitTestBehavior.opaque,
@@ -227,7 +223,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ],
             ),
             const SizedBox(height: 5),
-            // 2 段目: 回転率(主役)・回転・EV・P/L。
+            // 2 段目: 回転率(主役)・回転・収支。
             Text.rich(
               TextSpan(children: [
                 TextSpan(
@@ -237,12 +233,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 TextSpan(
                     text: '・${t.totalRotations}回転',
                     style: AppTheme.mono(size: 12, color: AppColors.muted)),
-                // クイック計測(機種なし)の履歴は EV を表示しない。
-                if (!isQuick)
-                  TextSpan(
-                      text:
-                          '・EV${t.evYen == null ? '--' : fmtSignedNum(t.evYen!)}',
-                      style: AppTheme.mono(size: 12, color: evColor)),
                 if (t.plYen != null)
                   TextSpan(
                     text: '・${fmtSignedNum(t.plYen!)}円',

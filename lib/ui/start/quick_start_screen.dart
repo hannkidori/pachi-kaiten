@@ -156,7 +156,7 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
           // できること = 〇(アクセント) / できないこと = ✖(ニュートラル)。
           _cardBullet(Icons.circle_outlined, AppColors.accent, '回転率・総回転・グラフ'),
           const SizedBox(height: 6),
-          _cardBullet(Icons.close, AppColors.mutedDark, 'ボーダー比較・期待値'),
+          _cardBullet(Icons.close, AppColors.mutedDark, 'ボーダーとの比較'),
         ],
       ),
     );

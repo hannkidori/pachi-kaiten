@@ -15,7 +15,7 @@ String fmtYenSigned(num v) {
 /// 符号なし円(カンマ区切り)。例: 12,000円。
 String fmtYen(num v) => '${_grouped.format(v.round())}円';
 
-/// 符号つき数値(単位なし)。例: +2,840 / −1,960。履歴の EV 表示など。
+/// 符号つき数値(単位なし)。例: +2,840 / −1,960。
 String fmtSignedNum(num v) {
   final n = v.round();
   final sign = n >= 0 ? '+' : _minus;

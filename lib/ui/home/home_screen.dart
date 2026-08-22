@@ -156,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// 従: 機種を選んで計測(ボーダー比較・期待値が要るとき)。
+  /// 従: 機種を選んで計測(ボーダーとの比較が要るとき)。
   Future<void> _startWithMachine() async {
     final result = await Navigator.of(context).push<StartResult>(
       MaterialPageRoute(builder: (_) => StartScreen(services: s)),
@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           weight: FontWeight.w700,
                           color: const Color(0xFFF1ECE3))),
                   const SizedBox(height: 4),
-                  Text('ボーダーとの比較・期待値がでます',
+                  Text('ボーダーとの比較がでます',
                       style: AppTheme.sans(
                           size: 11, height: 1.5, color: AppColors.subtle)),
                 ],

@@ -15,12 +15,12 @@ class AppDatabase {
   /// 現在のスキーマバージョン。
   /// v5: クイック計測対応で machine_id / machine_name を nullable 化。
   /// v6: 履歴にボーダー差分(border_diff)を追加(ホームの前回比ヒーロー用)。
-  static const _dbVersion = 6;
+  static const _dbVersion = 7;
 
   /// 「ここから先はデータを引き継ぐ」基準バージョン。
   ///
   /// これ未満(= リリース前の実験的スキーマ)からの更新だけは作り直しを許す。
-  /// [_baselineVersion] 以降は必ず [_migrations] に手順を書いて引き継ぐこと。
+  /// [_baselineVersion] 以降は必ず [migrations] に手順を書いて引き継ぐこと。
   /// ユーザーが育てた機種マスタと履歴を消さないための線引き。
   static const _baselineVersion = 6;
 
@@ -29,7 +29,16 @@ class AppDatabase {
   /// 例: 7 でカラムを足すなら
   ///   7: (db) async => db.execute('ALTER TABLE traces ADD COLUMN memo TEXT'),
   /// スキーマを変えたら _dbVersion を上げ、必ずここに追記する。
-  static final Map<int, Future<void> Function(Database db)> _migrations = {};
+  /// (テストから直接適用して検証できるよう公開している)
+  static final Map<int, Future<void> Function(Database db)> migrations = {
+    // 収支を「回収 − 消化額」から「回収 − 投資」に変更(消化額は持ち玉で回した分も
+    // 含むため、実際の現金収支と一致しなかった)。投資額の列を足し、意味の違う
+    // 旧 pl_yen は誤った数字を残さないよう捨てる(履歴の行そのものは残る)。
+    7: (db) async {
+      await db.execute('ALTER TABLE traces ADD COLUMN invest_yen INTEGER');
+      await db.execute('UPDATE traces SET pl_yen = NULL');
+    },
+  };
 
   Database? _db;
 
@@ -55,7 +64,7 @@ class AppDatabase {
   /// バージョンを上げるときの処理。
   ///
   /// - [_baselineVersion] 未満から: リリース前の互換の無いスキーマなので作り直す。
-  /// - それ以降: [_migrations] を 1 段ずつ適用してデータを引き継ぐ。
+  /// - それ以降: [migrations] を 1 段ずつ適用してデータを引き継ぐ。
   ///   手順が未定義のバージョンがあれば、黙って壊れないよう例外にする
   ///   (開発時に必ず気付ける)。
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -64,10 +73,10 @@ class AppDatabase {
       return;
     }
     for (var v = oldVersion + 1; v <= newVersion; v++) {
-      final step = _migrations[v];
+      final step = migrations[v];
       if (step == null) {
         throw StateError('DB v$v のマイグレーションが未定義です'
-            '(_migrations に追記してください)');
+            '(migrations に追記してください)');
       }
       await step(db);
     }
@@ -149,9 +158,10 @@ class AppDatabase {
       rotation_rate REAL,
       border_diff REAL,
       total_rotations INTEGER NOT NULL,
-      ev_yen INTEGER,
+      ev_yen INTEGER, -- 旧: 期待値。表示を廃止したので書き込まない(列だけ残す)
       consumed_yen INTEGER NOT NULL,
       bonus_count INTEGER NOT NULL,
+      invest_yen INTEGER,
       pl_yen INTEGER,
       created_at TEXT NOT NULL
     )

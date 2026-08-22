@@ -140,15 +140,15 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     _flowBusy = true;
     try {
       final st = c.stats;
-      final result = await showRecoverySheet(
+      final result = await showSettlementSheet(
         context,
         machineName: c.machine?.name ?? '計測',
         rateStr: fmtRate(st.rotationRate),
         totalSpins: st.totalRotations,
       );
       if (result == null || !mounted) return; // dismiss = 中断
-      final trace = await s.sessionService
-          .endAndLog(c.session, c.machine, recovery: result.recovery);
+      final trace = await s.sessionService.endAndLog(c.session, c.machine,
+          invest: result.invest, recovery: result.recovery);
       if (!mounted) return;
       _backHome(discarded: trace == null);
     } finally {
@@ -506,9 +506,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       border = const Color(0x40F06A5D);
       arrow = '▼ ';
     }
-    final evStr = st.expectedValue == null
-        ? '--'
-        : fmtYenSigned(st.expectedValue!);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -524,23 +521,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           const SizedBox(width: 12),
           Text('ボーダー比',
               style: AppTheme.sans(size: 11, color: AppColors.muted)),
-          const SizedBox(width: 12),
-          // 期待値は残り幅に収める(大きな金額でも右端で溢れない)。
-          Expanded(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text.rich(TextSpan(children: [
-                TextSpan(
-                    text: '期待値 ',
-                    style: AppTheme.sans(size: 11, color: AppColors.muted)),
-                TextSpan(
-                    text: evStr,
-                    style: AppTheme.mono(
-                        size: 14, weight: FontWeight.w600, color: color)),
-              ])),
-            ),
-          ),
         ],
       ),
     );

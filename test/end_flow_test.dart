@@ -36,7 +36,8 @@ void main() {
       await service.recordCount(s, counter: 20);
       await service.recordCount(s, counter: 40); // 消化2000
 
-      final trace = await service.endAndLog(s, _a, recovery: 5000);
+      final trace =
+          await service.endAndLog(s, _a, invest: 2000, recovery: 5000);
       expect(trace, isNotNull);
 
       final all = await traceRepo.allDesc();
@@ -45,7 +46,8 @@ void main() {
       expect(t.machineName, 'P大海物語5');
       expect(t.consumedYen, 2000);
       expect(t.totalRotations, 40);
-      expect(t.plYen, 3000); // 回収5000 - 消化2000
+      expect(t.investYen, 2000);
+      expect(t.plYen, 3000); // 回収5000 - 投資2000(消化額は基準にしない)
       expect(t.rotationRate, closeTo(20.0, 1e-9));
       expect(t.borderDiff, closeTo(20.0 - 16.5, 1e-9)); // ホームの前回比用
 
@@ -55,17 +57,42 @@ void main() {
       expect(await sessionRepo.active(), isNull);
     });
 
-    test('終了(回収スキップ): P/L は null', () async {
+    test('終了(収支スキップ): 投資・P/L とも null', () async {
       final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
       await service.recordCount(s, counter: 30);
 
-      final trace = await service.endAndLog(s, _a); // recovery 省略=スキップ
+      final trace = await service.endAndLog(s, _a); // 投資・回収とも省略=スキップ
       expect(trace, isNotNull);
-      expect(trace!.plYen, isNull);
+      expect(trace!.investYen, isNull);
+      expect(trace.plYen, isNull);
       expect((await traceRepo.allDesc()).single.plYen, isNull);
     });
 
-    test('クイック計測(機種なし): 履歴は machineName=null・EV=null で保存', () async {
+    test('片方だけの入力では収支を出さない(両方揃ったときだけ)', () async {
+      final s1 = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
+      await service.recordCount(s1, counter: 30);
+      final onlyInvest = await service.endAndLog(s1, _a, invest: 3000);
+      expect(onlyInvest!.plYen, isNull);
+
+      final s2 = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
+      await service.recordCount(s2, counter: 30);
+      final onlyRecovery = await service.endAndLog(s2, _a, recovery: 3000);
+      expect(onlyRecovery!.plYen, isNull);
+    });
+
+    test('収支は消化額ではなく投資額との差(持ち玉で回しても歪まない)', () async {
+      // 現金 1 万円だけ入れ、持ち玉で 2 万円分回した想定(消化 3 万円)。
+      final s = await service.start(machine: _a, ballPrice: 4.0, startCounter: 0);
+      for (var i = 1; i <= 30; i++) {
+        await service.recordCount(s, counter: i * 20);
+      }
+      final trace =
+          await service.endAndLog(s, _a, invest: 10000, recovery: 0);
+      expect(trace!.consumedYen, 30000); // 消化は持ち玉分も含む
+      expect(trace.plYen, -10000); // 収支は実際に入れた現金の分だけ
+    });
+
+    test('クイック計測(機種なし): 履歴は machineName=null・ボーダー差なしで保存', () async {
       // 機種を選ばず計測 → machineId null・ボーダーなし。
       final s = await service.start(
           machine: null, ballPrice: 4.0, startCounter: 0);
@@ -73,19 +100,18 @@ void main() {
       await service.recordCount(s, counter: 20);
       await service.recordCount(s, counter: 41);
 
-      final trace = await service.endAndLog(s, null, recovery: 3000);
+      final trace =
+          await service.endAndLog(s, null, invest: 2000, recovery: 3000);
       expect(trace, isNotNull);
       expect(trace!.machineName, isNull); // クイックは機種名なし
       expect(trace.rotationRate, closeTo(20.5, 1e-9)); // 回転率は出る
-      expect(trace.evYen, isNull); // ボーダーなし=EVなし
-      expect(trace.borderDiff, isNull); // ボーダー差分も出ない
-      expect(trace.plYen, 3000 - 2000); // 回収-消化 は出る
+      expect(trace.borderDiff, isNull); // ボーダーなし=差分も出ない
+      expect(trace.plYen, 3000 - 2000); // 収支は機種の有無に関係なく出る
 
-      // 履歴(時系列)に 1 件だけ残り、EV は null のまま。
+      // 履歴(時系列)に 1 件だけ残る。
       final all = await traceRepo.allDesc();
       expect(all.length, 1);
       expect(all.single.machineName, isNull);
-      expect(all.single.evYen, isNull);
     });
 
     test('終了3経路(終了/リセット/復帰終了)は同じ endAndLog を通り各1件残す', () async {

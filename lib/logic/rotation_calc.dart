@@ -54,9 +54,6 @@ class RotationStats {
   /// ボーダー比 = R − B。R が null / ボーダー未設定のときは null。
   final double? borderDiff;
 
-  /// 期待値 EV(円、10円単位丸め)。R が null / 0、または B が 0 のときは null。
-  final double? expectedValue;
-
   /// count イベントごとの区間(グラフ用、時系列順)。
   final List<RotationSegment> segments;
 
@@ -74,7 +71,6 @@ class RotationStats {
     required this.rotationRate,
     required this.border,
     required this.borderDiff,
-    required this.expectedValue,
     required this.segments,
     required this.bonusCount,
     this.rebaseMarkers = const [],
@@ -91,7 +87,9 @@ class RotationStats {
 /// - start / rebase は起点を付け替えるだけで、それ自体は回転・消化に加算しない。
 /// - 消化額(円): count の yen(= 加算単位 1000/500)をそのまま足す。
 /// - R = 総回転 / (消化額 / 1000)。
-/// - EV = 消化額 × (R − B) / B(10円単位丸め)。
+///
+/// 期待値(円)は出さない。円換算には交換率と持ち玉比率の前提が要るが、アプリは
+/// どちらも持たないため、ボーダー比 R − B までを事実として示すに留める。
 ///
 /// [border] はユーザーが入力した機種スロットのボーダー(補正せずそのまま使う)。
 /// 0 はボーダー未設定(クイック計測)= 判定・EV を出さない。
@@ -141,19 +139,12 @@ RotationStats computeStats({
   final double? borderDiff =
       (r == null || !hasBorder) ? null : r - border;
 
-  double? ev;
-  if (r != null && r > 0 && hasBorder) {
-    final raw = consumed * (r - border) / border;
-    ev = (raw / 10).round() * 10.0; // 10円単位丸め
-  }
-
   return RotationStats(
     totalRotations: total,
     consumedYen: consumed,
     rotationRate: r,
     border: border,
     borderDiff: borderDiff,
-    expectedValue: ev,
     segments: segments,
     bonusCount: bonusCount,
     rebaseMarkers: rebaseMarkers,

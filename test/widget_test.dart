@@ -512,6 +512,89 @@ void main() {
     expect(find.text('機種なしでリセット'), findsNothing); // 主役と同義のため非表示
   });
 
+  // ---- 収支シート(投資・回収の 2 欄) ----
+  group('収支シート', () {
+    late SettlementResult? result;
+
+    Future<void> open(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      result = null;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: TextButton(
+                onPressed: () async => result = await showSettlementSheet(
+                    context,
+                    machineName: 'P大海物語5',
+                    rateStr: '20.5',
+                    totalSpins: 249),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    /// テンキーで数字を打つ(入力先は選択中の欄)。
+    Future<void> type(WidgetTester tester, String digits) async {
+      for (final d in digits.split('')) {
+        await tester.tap(find.text(d)); // テンキーのキー(金額欄は「1000円」形式なので衝突しない)
+        await tester.pump();
+      }
+    }
+
+    testWidgets('初期は折りたたみ。開くと投資・回収の 2 欄が出る', (tester) async {
+      await open(tester);
+      expect(find.text('収支を記録'), findsOneWidget);
+      expect(find.text('投資'), findsNothing);
+
+      await tester.tap(find.text('収支を記録'));
+      await tester.pumpAndSettle();
+      expect(find.text('投資'), findsOneWidget);
+      expect(find.text('回収'), findsOneWidget);
+      expect(tester.takeException(), isNull); // はみ出さない
+    });
+
+    testWidgets('両方入れたときだけ収支が出て、結果に入る', (tester) async {
+      await open(tester);
+      await tester.tap(find.text('収支を記録'));
+      await tester.pumpAndSettle();
+
+      // 投資 10000(初期の入力先は投資)。片方だけでは収支を出さない。
+      await type(tester, '10000');
+      expect(find.text('投資と回収の両方で収支を記録します'), findsOneWidget);
+      expect(find.text('終了する'), findsOneWidget); // CTA はまだ収支なし
+
+      // 回収欄をタップして 4000 → 収支 −6,000円
+      await tester.tap(find.text('回収'));
+      await tester.pump();
+      await type(tester, '4000');
+      expect(find.text('収支 −6,000円'), findsOneWidget); // マイナスは U+2212
+
+      await tester.tap(find.text('終了する(＋収支を記録)'));
+      await tester.pumpAndSettle();
+      expect(result!.invest, 10000);
+      expect(result!.recovery, 4000);
+    });
+
+    testWidgets('何も入れずに終了すると収支なし(履歴だけ残す)', (tester) async {
+      await open(tester);
+      await tester.tap(find.text('終了する'));
+      await tester.pumpAndSettle();
+      expect(result, isNotNull); // 中断ではない
+      expect(result!.invest, isNull);
+      expect(result!.recovery, isNull);
+      expect(result!.hasSettlement, isFalse);
+    });
+  });
+
   // ---- 設定: 作者の他のアプリ(iOS のみ) ----
   group('設定の他アプリ紹介欄', () {
     Future<void> pumpSettings(WidgetTester tester) async {

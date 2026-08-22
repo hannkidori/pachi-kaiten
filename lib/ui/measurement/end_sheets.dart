@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/machine.dart';
 import '../../theme/app_theme.dart';
+import '../../util/format.dart';
 import '../widgets/counter_field.dart';
 import '../widgets/numpad.dart';
 
@@ -82,24 +83,28 @@ Future<ResetChoice?> showResetSheet(
   );
 }
 
-// ---------------- 回収額入力(任意・スキップ可) ----------------
+// ---------------- 収支入力(任意・スキップ可) ----------------
 
-/// 回収額シートの結果。[recovery] が null なら「スキップ」(P/L を記録しない)。
+/// 収支シートの結果。[invest] / [recovery] は両方揃ったときだけ入る。
+/// どちらも null なら「記録しない」(収支なしで履歴だけ残す)。
 /// シート自体が dismiss された場合は null(= 終了フローを中断)。
-class RecoveryResult {
+class SettlementResult {
+  final int? invest;
   final int? recovery;
-  const RecoveryResult(this.recovery);
+  const SettlementResult({this.invest, this.recovery});
+
+  bool get hasSettlement => invest != null && recovery != null;
 }
 
-Future<RecoveryResult?> showRecoverySheet(
+Future<SettlementResult?> showSettlementSheet(
   BuildContext context, {
   required String machineName,
   required String rateStr,
   required int totalSpins,
 }) {
-  return _showSheet<RecoveryResult>(
+  return _showSheet<SettlementResult>(
     context,
-    _RecoverySheet(
+    _SettlementSheet(
       machineName: machineName,
       rateStr: rateStr,
       totalSpins: totalSpins,
@@ -107,101 +112,158 @@ Future<RecoveryResult?> showRecoverySheet(
   );
 }
 
-class _RecoverySheet extends StatefulWidget {
+/// テンキーの入力先。
+enum _Field { invest, recovery }
+
+class _SettlementSheet extends StatefulWidget {
   final String machineName;
   final String rateStr;
   final int totalSpins;
-  const _RecoverySheet({
+  const _SettlementSheet({
     required this.machineName,
     required this.rateStr,
     required this.totalSpins,
   });
 
   @override
-  State<_RecoverySheet> createState() => _RecoverySheetState();
+  State<_SettlementSheet> createState() => _SettlementSheetState();
 }
 
-class _RecoverySheetState extends State<_RecoverySheet> {
-  String _typed = '';
-  bool _expanded = false; // 「＋ 回収額を記録」を展開したか
+class _SettlementSheetState extends State<_SettlementSheet> {
+  String _invest = '';
+  String _recovery = '';
+  _Field _focus = _Field.invest;
+  bool _expanded = false; // 「＋ 収支を記録」を展開したか
+
+  /// 収支は「回収 − 投資」。消化額は持ち玉で回した分も含むため基準に使わない。
+  /// 片方だけでは意味を成さないので、両方入っているときだけ出す。
+  int? get _pl {
+    final i = int.tryParse(_invest);
+    final r = int.tryParse(_recovery);
+    if (i == null || r == null) return null;
+    return r - i;
+  }
+
+  void _onKey(String k) {
+    setState(() {
+      if (_focus == _Field.invest) {
+        _invest = applyKey(_invest, k, maxLen: 7);
+      } else {
+        _recovery = applyKey(_recovery, k, maxLen: 7);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasInput = _typed.isNotEmpty;
-    // 主役 CTA。回収額を入力していればラベルに (＋回収額を記録) を足す。
-    final ctaLabel = hasInput ? '終了する(＋回収額を記録)' : '終了する';
+    final pl = _pl;
+    final ctaLabel = pl == null ? '終了する' : '終了する(＋収支を記録)';
     return Container(
       decoration: _sheetDeco(),
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('計測を終了',
-              style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          // 要約 1 行。
-          Text('${widget.machineName} ・ ${widget.rateStr}回/k ・ ${widget.totalSpins}回転',
-              style: AppTheme.mono(size: 12, color: AppColors.textStrong)),
-          const SizedBox(height: 16),
-          // 「＋ 回収額を記録 任意」の折りたたみ行。
-          if (!_expanded)
-            GestureDetector(
-              onTap: () => setState(() => _expanded = true),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    const Icon(Icons.add, size: 15, color: AppColors.muted),
-                    const SizedBox(width: 6),
-                    Text('回収額を記録',
-                        style:
-                            AppTheme.sans(size: 12.5, color: AppColors.textDim)),
-                    const SizedBox(width: 6),
-                    Text('任意',
-                        style: AppTheme.sans(
-                            size: 10.5, color: AppColors.mutedDark)),
-                  ],
+      // 小さい画面でテンキーごと収まらないことがあるためスクロールさせる。
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('計測を終了',
+                style: AppTheme.sans(size: 14, weight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            // 要約 1 行。
+            Text(
+                '${widget.machineName} ・ ${widget.rateStr}回/k ・ ${widget.totalSpins}回転',
+                style: AppTheme.mono(size: 12, color: AppColors.textStrong)),
+            const SizedBox(height: 16),
+            // 「＋ 収支を記録 任意」の折りたたみ行。
+            if (!_expanded)
+              GestureDetector(
+                onTap: () => setState(() => _expanded = true),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add, size: 15, color: AppColors.muted),
+                      const SizedBox(width: 6),
+                      Text('収支を記録',
+                          style: AppTheme.sans(
+                              size: 12.5, color: AppColors.textDim)),
+                      const SizedBox(width: 6),
+                      Text('任意',
+                          style: AppTheme.sans(
+                              size: 10.5, color: AppColors.mutedDark)),
+                    ],
+                  ),
                 ),
+              )
+            else ...[
+              _amountField(_Field.invest, '投資', _invest),
+              const SizedBox(height: 8),
+              _amountField(_Field.recovery, '回収', _recovery),
+              const SizedBox(height: 8),
+              // 両方入るまでは計算しない(片方だけの収支は意味がない)。
+              Text(
+                pl == null ? '投資と回収の両方で収支を記録します' : '収支 ${fmtYenSigned(pl)}',
+                textAlign: TextAlign.right,
+                style: pl == null
+                    ? AppTheme.sans(size: 10.5, color: AppColors.mutedDark)
+                    : AppTheme.mono(
+                        size: 14,
+                        weight: FontWeight.w600,
+                        color: pl >= 0 ? AppColors.up : AppColors.down),
               ),
-            )
-          else ...[
-            Container(
-              height: 52,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                border: Border.all(color: const Color(0x5956D9F0)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Text('回収',
-                      style: AppTheme.sans(size: 10, color: AppColors.muted)),
-                  const Spacer(),
-                  Text('${_typed.isEmpty ? '0' : _typed}円',
-                      style: AppTheme.mono(size: 24, weight: FontWeight.w500)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Numpad(
-              keyHeight: 44,
-              onKey: (k) =>
-                  setState(() => _typed = applyKey(_typed, k, maxLen: 7)),
+              const SizedBox(height: 10),
+              Numpad(keyHeight: 44, onKey: _onKey),
+            ],
+            const SizedBox(height: 14),
+            // 主役 = 終了する(収支なしで履歴保存)。両方入っていれば収支も記録。
+            _gradientButton(
+              ctaLabel,
+              height: 58,
+              onTap: () => Navigator.pop(
+                  context,
+                  pl == null
+                      ? const SettlementResult()
+                      : SettlementResult(
+                          invest: int.parse(_invest),
+                          recovery: int.parse(_recovery))),
             ),
           ],
-          const SizedBox(height: 14),
-          // 主役 = 終了する(回収額なしで履歴保存)。入力があれば P/L も記録。
-          _gradientButton(
-            ctaLabel,
-            height: 58,
-            onTap: () => Navigator.pop(
-                context,
-                RecoveryResult(hasInput ? (int.tryParse(_typed) ?? 0) : null)),
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  /// 金額 1 欄。タップで入力先を切り替える(選択中は枠をシアンにする)。
+  Widget _amountField(_Field field, String label, String typed) {
+    final active = _focus == field;
+    return GestureDetector(
+      onTap: () => setState(() => _focus = field),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          border: Border.all(
+              color: active ? const Color(0x8C56D9F0) : AppColors.border),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Text(label,
+                style: AppTheme.sans(
+                    size: 10,
+                    color: active ? AppColors.accentSoft : AppColors.muted)),
+            const Spacer(),
+            Text('${typed.isEmpty ? '0' : typed}円',
+                style: AppTheme.mono(
+                    size: 22,
+                    weight: FontWeight.w500,
+                    color: typed.isEmpty ? AppColors.mutedDark : AppColors.text)),
+          ],
+        ),
       ),
     );
   }

@@ -34,18 +34,15 @@ void main() {
       expect(s.border, 16.5);
       expect(s.hasBorder, isTrue);
       expect(s.borderDiff, closeTo(4.0, 1e-9));
-      // EV = 消化 × (R − B) / B = 2000 × 4 / 16.5 = 484.8… → 480(10円丸め)
-      expect(s.expectedValue, 480.0);
       expect(s.bonusCount, 0);
       expect(s.segments.map((e) => e.rotations).toList(), [20, 21]);
       expect(s.segments.map((e) => e.yen).toList(), [1000, 1000]);
     });
 
-    test('未計測(消化0)は R / borderDiff / EV が null', () {
+    test('未計測(消化0)は R / borderDiff が null', () {
       final s = computeStats(entries: [_e(EntryType.start, 100)], border: 16.5);
       expect(s.rotationRate, isNull);
       expect(s.borderDiff, isNull);
-      expect(s.expectedValue, isNull);
       expect(s.totalRotations, 0);
       expect(s.consumedYen, 0);
     });
@@ -72,7 +69,6 @@ void main() {
       expect(s.hasBorder, isFalse);
       expect(s.rotationRate, closeTo(20.0, 1e-9));
       expect(s.borderDiff, isNull);
-      expect(s.expectedValue, isNull);
     });
   });
 
