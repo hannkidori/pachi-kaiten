@@ -76,6 +76,15 @@ void main() {
       expect(m1.border1, 70.0); // 1円だけ入る
     });
 
+    test('all() は登録の新しい順(名前順ではない)', () async {
+      // 名前順だと漢字がコード順に並んで探しにくいので登録順で固定している。
+      await repo.insert(const Machine(name: 'ぱ機種')); // id 1
+      await repo.insert(const Machine(name: 'あ機種')); // id 2
+      await repo.insert(const Machine(name: 'A機種')); // id 3
+      final list = await repo.all();
+      expect(list.map((m) => m.name), ['A機種', 'あ機種', 'ぱ機種']);
+    });
+
     test('登録→再選択→スロット上書きが往復する', () async {
       // 4円ボーダーだけで登録。
       final saved = await repo.insert(

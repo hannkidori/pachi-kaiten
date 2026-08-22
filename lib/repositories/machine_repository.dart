@@ -8,7 +8,9 @@ class MachineRepository {
   MachineRepository(this.db);
 
   Future<List<Machine>> all() async {
-    final rows = await db.query('machines', orderBy: 'name ASC');
+    // 並びは登録の新しい順。名前順は漢字がコード順に並んで探しにくいため使わない
+    // (画面側で「最近使った順」を先頭に積む)。
+    final rows = await db.query('machines', orderBy: 'id DESC');
     return rows.map(Machine.fromMap).toList();
   }
 

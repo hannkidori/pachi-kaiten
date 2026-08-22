@@ -44,14 +44,12 @@ class _MachinesScreenState extends State<MachinesScreen> {
     });
   }
 
-  /// 検索(名前の部分一致)+ 名前順。マスタ管理なので「最近使った順」は使わない。
+  /// 検索(名前の部分一致)。並びは取得順のまま = 登録の新しい順。
+  /// マスタ管理画面なので「最近使った順」は使わず、登録順で安定させる。
   List<Machine> get _visible {
     final q = _query.trim().toLowerCase();
-    final list = q.isEmpty
-        ? [..._machines]
-        : _machines.where((m) => m.name.toLowerCase().contains(q)).toList();
-    list.sort((a, b) => a.name.compareTo(b.name));
-    return list;
+    if (q.isEmpty) return _machines;
+    return _machines.where((m) => m.name.toLowerCase().contains(q)).toList();
   }
 
   String _stamp() => DateTime.now().toIso8601String();

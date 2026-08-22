@@ -22,11 +22,11 @@ void main() {
       _m(3, 'P北斗の拳'),
     ];
 
-    test('クエリ空: 最近使った機種が先頭、残りは名前順', () {
+    test('クエリ空: 最近使った機種が先頭、残りは取得順のまま', () {
       final r = orderMachines(all: all, recentIds: [3], query: '');
       expect(r.first.id, 3);
-      // 残りは名前順(コードユニット比較で 'Pエヴァ' < 'P大海')
-      expect(r.sublist(1).map((m) => m.id), [2, 1]);
+      // 残りは all の順(= リポジトリの登録の新しい順)。名前順に並べ替えない。
+      expect(r.sublist(1).map((m) => m.id), [1, 2]);
     });
 
     test('クエリあり: 名前部分一致でフィルタ', () {

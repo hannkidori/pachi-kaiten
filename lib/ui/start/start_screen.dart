@@ -19,7 +19,8 @@ class StartResult {
 }
 
 /// 機種リストの並び替え。検索クエリがあれば名前部分一致(大文字小文字無視)、
-/// 空なら最近使った機種([recentIds] 順)を先頭に、残りを名前順で返す。
+/// 空なら最近使った機種([recentIds] 順)を先頭に、残りは [all] の順
+/// (= 登録の新しい順)で返す。名前順は使わない。
 List<Machine> orderMachines({
   required List<Machine> all,
   required List<int> recentIds,
@@ -36,7 +37,8 @@ List<Machine> orderMachines({
     final m = byId.remove(id);
     if (m != null) recent.add(m);
   }
-  final rest = byId.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+  // 残りは取得順のまま = 登録の新しい順(名前順にはしない)。
+  final rest = byId.values.toList();
   return [...recent, ...rest];
 }
 
