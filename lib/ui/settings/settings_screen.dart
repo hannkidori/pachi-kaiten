@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../models/machine.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
-import '../start/machine_sheets.dart';
 import '../widgets/glow_background.dart';
 
-/// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止 / 機種の編集・削除。
+/// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止。
+/// 機種の登録・編集・削除は機種ページ(ホーム下部)に集約した。
 /// エクスポート/インポートは次期バージョンで揃えて実装予定(現状は未提供)。
 class SettingsScreen extends StatefulWidget {
   final AppServices services;
@@ -19,7 +18,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   AppServices get s => widget.services;
 
-  List<Machine> _machines = [];
   int _addUnit = 1000;
   double _ballPrice = 4.0;
   bool _keepAwake = true;
@@ -32,13 +30,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
-    final machines = await s.machines.all();
     final addUnit = await s.settings.addUnitDefault();
     final ballPrice = await s.settings.ballPrice();
     final keepAwake = await s.settings.keepAwake();
     if (!mounted) return;
     setState(() {
-      _machines = machines;
       _addUnit = addUnit;
       _ballPrice = ballPrice;
       _keepAwake = keepAwake;
@@ -64,23 +60,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _keepAwake = on);
   }
 
-  Future<void> _editMachine(Machine m) async {
-    final res = await showMachineEdit(
-      context,
-      machine: m,
-      // 自分以外の機種名(同名への改名を防ぐ)。
-      existingNames:
-          _machines.where((x) => x.id != m.id).map((x) => x.name).toList(),
-    );
-    if (res == null) return;
-    if (res.deleted) {
-      if (m.id != null) await s.machines.delete(m.id!);
-    } else if (res.saved != null) {
-      await s.machines.update(res.saved!);
-    }
-    await _load();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,16 +78,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _hint('機種のボーダーは貸玉ごとに登録できます'),
                   _keepAwakeRow(),
                   _hint('計測中、画面を消灯しません'),
-                  _section('機種'),
-                  if (_machines.isEmpty)
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: Text('登録された機種はありません',
-                          style: AppTheme.sans(
-                              size: 12, color: AppColors.mutedDark)),
-                    ),
-                  for (final m in _machines) _machineRow(m),
                   _section('このアプリ'),
                   _hint('広告なし・通信なし。計測データはこの端末の中だけにあります'),
                   const SizedBox(height: 6),
@@ -226,33 +195,5 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _machineRow(Machine m) {
-    String slot(double? v) => v == null ? '--' : v.toStringAsFixed(1);
-    return InkWell(
-      onTap: () => _editMachine(m),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(m.name,
-                  style: AppTheme.sans(size: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-            ),
-            // 文字拡大時でも行からはみ出さないようにする。
-            Flexible(
-              child: Text('4円 ${slot(m.border4)} ・ 1円 ${slot(m.border1)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTheme.mono(size: 11, color: AppColors.muted)),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedDark),
-          ],
-        ),
-      ),
-    );
-  }
 
 }

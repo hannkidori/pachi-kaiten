@@ -11,6 +11,7 @@ import '../../state/measurement_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../util/format.dart';
 import '../history/history_screen.dart';
+import '../machines/machines_screen.dart';
 import '../measurement/measurement_screen.dart';
 import '../settings/settings_screen.dart';
 import '../start/quick_start_screen.dart';
@@ -180,6 +181,14 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => HistoryScreen(services: s),
     ));
+  }
+
+  Future<void> _openMachines() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => MachinesScreen(services: s),
+    ));
+    if (!mounted) return;
+    _refresh(); // 機種名の変更・削除を前回比ヒーローへ反映する
   }
 
   Future<void> _openSettings() async {
@@ -517,22 +526,24 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _bottomLink(Icons.history, '足跡', _openHistory),
-        Container(
-          width: 1,
-          height: 14,
-          color: AppColors.border,
-        ),
+        _linkDivider(),
+        _bottomLink(Icons.grid_view_rounded, '機種', _openMachines),
+        _linkDivider(),
         _bottomLink(Icons.settings_outlined, '設定', _openSettings),
       ],
     );
   }
+
+  Widget _linkDivider() =>
+      Container(width: 1, height: 14, color: AppColors.border);
 
   Widget _bottomLink(IconData icon, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        // 3 つ並ぶので左右は詰めるが、縦 12 + 文字高で 44px 以上を確保する。
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
