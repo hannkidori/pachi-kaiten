@@ -248,6 +248,20 @@ void main() {
     });
   });
 
+  group('バージョン表記', () {
+    test('設定画面の表示が pubspec.yaml と一致する', () {
+      // 片方だけ上げ忘れると、ユーザーに古い版数を見せることになる。
+      final pubspec = File('pubspec.yaml').readAsStringSync();
+      final m = RegExp(r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)', multiLine: true)
+          .firstMatch(pubspec);
+      expect(m, isNotNull, reason: 'pubspec.yaml に version が無い');
+      final version = m!.group(1);
+      final settings =
+          File('lib/ui/settings/settings_screen.dart').readAsStringSync();
+      expect(settings, contains("'パチ回転計 v$version'"));
+    });
+  });
+
   group('ネットワーク非依存', () {
     test('pubspec.yaml に http / file_picker 依存が無い', () {
       final text = File('pubspec.yaml').readAsStringSync();

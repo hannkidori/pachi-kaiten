@@ -552,7 +552,8 @@ void main() {
 
         expect(find.text('作者の他のアプリ'), findsNothing);
         expect(find.text('ハナジャグ'), findsNothing);
-        expect(find.text('パチ回転計 v1.0.0'), findsOneWidget); // 版数表示は残る
+        // 版数表示は残る(数字は feature_test の pubspec 一致テストで担保)
+        expect(find.textContaining('パチ回転計 v'), findsOneWidget);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
