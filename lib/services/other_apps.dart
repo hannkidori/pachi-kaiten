@@ -21,13 +21,13 @@ class OtherApp {
 const List<OtherApp> kOtherApps = [
   OtherApp(
     name: 'ハナジャグ',
-    description: 'ハナハナ・ジャグラー専用の設定推測と収支記録',
+    description: 'ハナハナ・ジャグラー専用の設定推測とデータを記録',
     appStoreId: '6792313623',
   ),
   OtherApp(
     name: 'コヤカン',
     description: '縦横対応の小役カウンター',
-    appStoreId: '6795847953',
+    appStoreId: '6801049251',
   ),
 ];
 

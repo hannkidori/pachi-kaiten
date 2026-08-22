@@ -235,7 +235,7 @@ void main() {
     test('App Store の ID が正しい', () {
       // リンク先を取り違えると別アプリに飛ぶので数値まで固定する。
       expect(kOtherApps[0].appStoreId, '6792313623'); // ハナジャグ
-      expect(kOtherApps[1].appStoreId, '6795847953'); // コヤカン
+      expect(kOtherApps[1].appStoreId, '6801049251'); // コヤカン
     });
 
     test('URL は App Store のアプリページ形式', () {

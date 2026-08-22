@@ -535,7 +535,7 @@ void main() {
         expect(find.text('作者の他のアプリ'), findsOneWidget);
         expect(find.text('ハナジャグ'), findsOneWidget);
         expect(find.text('コヤカン'), findsOneWidget);
-        expect(find.text('ハナハナ・ジャグラー専用の設定推測と収支記録'), findsOneWidget);
+        expect(find.text('ハナハナ・ジャグラー専用の設定推測とデータを記録'), findsOneWidget);
         expect(find.text('縦横対応の小役カウンター'), findsOneWidget);
         // 削除済みの旧文言が残っていないこと
         expect(find.textContaining('広告なし'), findsNothing);
