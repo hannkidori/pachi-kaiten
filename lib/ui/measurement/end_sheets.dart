@@ -257,7 +257,8 @@ class _SettlementSheetState extends State<_SettlementSheet> {
                     size: 10,
                     color: active ? AppColors.accentSoft : AppColors.muted)),
             const Spacer(),
-            Text('${typed.isEmpty ? '0' : typed}円',
+            // 桁区切りを入れる(1万と10万を見間違えないように)。下の収支表示と揃う。
+            Text(fmtYen(int.tryParse(typed) ?? 0),
                 style: AppTheme.mono(
                     size: 22,
                     weight: FontWeight.w500,

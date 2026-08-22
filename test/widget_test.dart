@@ -569,6 +569,7 @@ void main() {
 
       // 投資 10000(初期の入力先は投資)。片方だけでは収支を出さない。
       await type(tester, '10000');
+      expect(find.text('10,000円'), findsOneWidget); // 桁区切りを入れる
       expect(find.text('投資と回収の両方で収支を記録します'), findsOneWidget);
       expect(find.text('終了する'), findsOneWidget); // CTA はまだ収支なし
 
