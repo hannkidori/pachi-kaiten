@@ -9,6 +9,7 @@ class SettingsRepository {
   static const kKeepAwake = 'keep_awake';
   static const kBallPrice = 'ball_price'; // グローバル貸玉(4.0 / 1.0)
   static const kReviewStage = 'review_stage'; // レビュー依頼を出した回数(0..3)
+  static const kReviewWaited = 'review_waited'; // 好条件待ちで見送った計測回数
 
   Future<String?> getString(String key) async {
     final rows =
@@ -55,4 +56,13 @@ class SettingsRepository {
 
   Future<void> setReviewStage(int stage) =>
       setString(kReviewStage, stage.toString());
+
+  /// 資格を得たあと、好条件が来ないまま見送った計測の回数。既定 0。
+  Future<int> reviewWaited() async {
+    final v = await getString(kReviewWaited);
+    return int.tryParse(v ?? '') ?? 0;
+  }
+
+  Future<void> setReviewWaited(int n) =>
+      setString(kReviewWaited, n.toString());
 }

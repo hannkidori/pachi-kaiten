@@ -114,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
     await controller.load();
     final keepAwake = await s.settings.keepAwake();
     if (!mounted) return;
+    // 足跡が 1 件増えたか(=計測を終えたか)を id で見分ける。単に「戻る」で
+    // 抜けた場合と区別してレビュー依頼の判定に使う。
+    final beforeTraceId = _latest?.id;
     final discarded = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => MeasurementScreen(
         controller: controller,
@@ -134,10 +137,13 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(seconds: 3),
       ));
     }
-    _refresh();
-    // 計測中は割り込まず、画面を出た区切りでだけレビュー依頼を検討する
+    await _refresh();
+    // 計測中は割り込まず、計測を終えた区切りでだけレビュー依頼を検討する
     // (条件を満たさなければ何も起きない)。
-    await s.reviewPrompt.maybeRequest();
+    final trace = _latest;
+    if (trace != null && trace.id != beforeTraceId) {
+      await s.reviewPrompt.onMeasurementEnded(trace);
+    }
   }
 
   /// 主役: 機種選択を経由せず直接カウンタ入力へ(クイック計測)。

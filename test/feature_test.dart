@@ -130,25 +130,58 @@ void main() {
     });
   });
 
-  group('レビュー依頼のしきい値(iOS)', () {
-    test('しきい値は 50 / 500 / 1000 の 3 段(iOS の年3回上限に合わせる)', () {
-      expect(kReviewMilestones, [50, 500, 1000]);
+  group('レビュー依頼(iOS)', () {
+    group('資格 — 決定の累計回数', () {
+      test('しきい値は 50 / 500 / 1000 の 3 段(iOS の年3回上限に合わせる)', () {
+        expect(kReviewMilestones, [50, 500, 1000]);
+      });
+
+      test('各段は到達した回数でだけ資格が立つ', () {
+        expect(hasReviewQualification(count: 49, stage: 0), isFalse);
+        expect(hasReviewQualification(count: 50, stage: 0), isTrue);
+        // 1 段目を消化したら次は 500 まで立たない
+        expect(hasReviewQualification(count: 499, stage: 1), isFalse);
+        expect(hasReviewQualification(count: 500, stage: 1), isTrue);
+        expect(hasReviewQualification(count: 999, stage: 2), isFalse);
+        expect(hasReviewQualification(count: 1000, stage: 2), isTrue);
+      });
+
+      test('3 段消化後は何回入力しても資格は立たない(打ち止め)', () {
+        expect(hasReviewQualification(count: 1000, stage: 3), isFalse);
+        expect(hasReviewQualification(count: 999999, stage: 3), isFalse);
+        expect(hasReviewQualification(count: 999999, stage: 99), isFalse);
+      });
     });
 
-    test('各段は到達した回数でだけ true', () {
-      expect(shouldRequestReview(count: 49, stage: 0), isFalse);
-      expect(shouldRequestReview(count: 50, stage: 0), isTrue);
-      // 1 段目を消化したら次は 500 まで出ない
-      expect(shouldRequestReview(count: 499, stage: 1), isFalse);
-      expect(shouldRequestReview(count: 500, stage: 1), isTrue);
-      expect(shouldRequestReview(count: 999, stage: 2), isFalse);
-      expect(shouldRequestReview(count: 1000, stage: 2), isTrue);
-    });
+    group('発火 — ボーダー超えで終えた直後', () {
+      ReviewAction decide(double? diff, {int rotations = 300, int waited = 0}) =>
+          decideAfterMeasurement(
+              totalRotations: rotations, borderDiff: diff, waited: waited);
 
-    test('3 段消化後は何回入力しても出さない(打ち止め)', () {
-      expect(shouldRequestReview(count: 1000, stage: 3), isFalse);
-      expect(shouldRequestReview(count: 999999, stage: 3), isFalse);
-      expect(shouldRequestReview(count: 999999, stage: 99), isFalse);
+      test('ボーダー超え(R−B > 0)なら出す', () {
+        expect(decide(0.1), ReviewAction.show);
+        expect(decide(3.2), ReviewAction.show);
+      });
+
+      test('ボーダー割れ・同値・ボーダー不明では出さず次を待つ', () {
+        expect(decide(-0.3), ReviewAction.wait); // 負けた直後に出さない
+        expect(decide(0.0), ReviewAction.wait); // ちょうどは超えていない
+        expect(decide(null), ReviewAction.wait); // クイック計測/ボーダー未登録
+      });
+
+      test('総回転が少なすぎる計測は待ち回数にも数えない', () {
+        expect(decide(5.0, rotations: kReviewMinRotations - 1),
+            ReviewAction.ignore);
+        expect(decide(null, rotations: 0), ReviewAction.ignore);
+        expect(decide(5.0, rotations: kReviewMinRotations), ReviewAction.show);
+      });
+
+      test('好条件が来ないまま 5 回終えたら妥協して出す', () {
+        // 0,1,2,3 回目までは待つ / 5 回目(waited=4)で出す
+        expect(decide(-1.0, waited: 0), ReviewAction.wait);
+        expect(decide(-1.0, waited: 3), ReviewAction.wait);
+        expect(decide(-1.0, waited: kReviewFallbackEnds - 1), ReviewAction.show);
+      });
     });
 
     group('入力回数の数え方', () {
@@ -182,10 +215,13 @@ void main() {
         expect(await entries.countOfType(EntryType.count), 0);
       });
 
-      test('依頼済みの段数は保存され、既定は 0', () async {
+      test('依頼済みの段数・待ち回数は保存され、既定は 0', () async {
         expect(await settings.reviewStage(), 0);
+        expect(await settings.reviewWaited(), 0);
         await settings.setReviewStage(1);
+        await settings.setReviewWaited(2);
         expect(await settings.reviewStage(), 1);
+        expect(await settings.reviewWaited(), 2);
       });
     });
   });
