@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pachi_kaiten/models/machine.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
+import 'package:pachi_kaiten/repositories/settings_repository.dart';
 import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -99,6 +100,30 @@ void main() {
       reloaded = await repo.byId(saved.id!);
       expect(reloaded!.border4, 18.3); // 4円は保持
       expect(reloaded.border1, 72.0);
+    });
+  });
+
+  group('設定の初期値(新規インストール時)', () {
+    late Database db;
+    late SettingsRepository settings;
+
+    setUp(() async {
+      db = await openTestDb();
+      settings = SettingsRepository(db);
+    });
+    tearDown(() async => db.close());
+
+    test('貸玉は 4円 / 加算単位は1000 / スリープ防止はON', () async {
+      expect(await settings.ballPrice(), 4.0); // 1円ではない
+      expect(await settings.addUnitDefault(), 1000);
+      expect(await settings.keepAwake(), isTrue);
+    });
+
+    test('1円に変えた後も 4円に戻せる', () async {
+      await settings.setBallPrice(1.0);
+      expect(await settings.ballPrice(), 1.0);
+      await settings.setBallPrice(4.0);
+      expect(await settings.ballPrice(), 4.0);
     });
   });
 
