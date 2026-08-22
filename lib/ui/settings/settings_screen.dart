@@ -86,7 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text('パチ回転計 v1.1.1',
+                    child: Text('パチ回転計 v1.2.0',
                         style: AppTheme.mono(
                             size: 11, color: AppColors.mutedDark)),
                   ),
