@@ -40,6 +40,27 @@ import UIKit
         }
         result(true)
       }
+
+      // 設定画面の「作者の他のアプリ」から App Store のページを開く。
+      // url_launcher を足さずに済ませるための最小の橋渡し。
+      let linkChannel = FlutterMethodChannel(
+        name: "pachi_kaiten/links",
+        binaryMessenger: registrar.messenger())
+      linkChannel.setMethodCallHandler { call, result in
+        guard call.method == "open" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        guard let args = call.arguments as? [String: Any],
+              let raw = args["url"] as? String,
+              let url = URL(string: raw) else {
+          result(FlutterError(code: "bad_url", message: "url が不正です", details: nil))
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { opened in
+          result(opened)
+        }
+      }
     }
   }
 }

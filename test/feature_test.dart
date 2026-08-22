@@ -6,6 +6,7 @@ import 'package:pachi_kaiten/models/machine.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
 import 'package:pachi_kaiten/repositories/settings_repository.dart';
+import 'package:pachi_kaiten/services/other_apps.dart';
 import 'package:pachi_kaiten/services/review_prompt.dart';
 import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -223,6 +224,27 @@ void main() {
         expect(await settings.reviewStage(), 1);
         expect(await settings.reviewWaited(), 2);
       });
+    });
+  });
+
+  group('作者の他のアプリ(紹介欄)', () {
+    test('ハナジャグ・コヤカンの 2 件を表示順に持つ', () {
+      expect(kOtherApps.map((a) => a.name), ['ハナジャグ', 'コヤカン']);
+    });
+
+    test('App Store の ID が正しい', () {
+      // リンク先を取り違えると別アプリに飛ぶので数値まで固定する。
+      expect(kOtherApps[0].appStoreId, '6792313623'); // ハナジャグ
+      expect(kOtherApps[1].appStoreId, '6795847953'); // コヤカン
+    });
+
+    test('URL は App Store のアプリページ形式', () {
+      expect(kOtherApps[0].storeUrl,
+          'https://apps.apple.com/jp/app/id6792313623');
+      for (final app in kOtherApps) {
+        expect(app.storeUrl, startsWith('https://apps.apple.com/'));
+        expect(app.description, isNotEmpty);
+      }
     });
   });
 

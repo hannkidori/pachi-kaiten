@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/app_services.dart';
+import '../../services/other_apps.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/glow_background.dart';
 
@@ -78,7 +79,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _hint('機種のボーダーは貸玉ごとに登録できます'),
                   _keepAwakeRow(),
                   _hint('計測中、画面を消灯しません'),
-                  const SizedBox(height: 26),
+                  if (showsOtherApps) ...[
+                    _section('作者の他のアプリ'),
+                    for (final app in kOtherApps) _appRow(app),
+                  ],
+                  const SizedBox(height: 20),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text('パチ回転計 v1.0.0',
@@ -122,6 +127,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 6),
       child: Text(text,
           style: AppTheme.sans(size: 10.5, color: AppColors.mutedDark, height: 1.5)),
+    );
+  }
+
+  /// 他アプリ 1 件。タップで App Store のページへ飛ぶ。
+  /// 機種ページの行と同じ 2 段組みで、外部へ出ることは open_in_new で示す。
+  Widget _appRow(OtherApp app) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      child: GestureDetector(
+        onTap: () => AppStoreLauncher.open(app),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(13, 12, 10, 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(app.name,
+                        style: AppTheme.sans(size: 13.5),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.open_in_new,
+                      size: 15, color: AppColors.mutedDark),
+                ],
+              ),
+              const SizedBox(height: 5),
+              Text(app.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTheme.sans(
+                      size: 11, color: AppColors.muted, height: 1.4)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

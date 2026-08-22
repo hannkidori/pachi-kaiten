@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pachi_kaiten/logic/anomaly.dart';
@@ -14,6 +15,7 @@ import 'package:pachi_kaiten/theme/app_theme.dart';
 import 'package:pachi_kaiten/ui/measurement/end_sheets.dart';
 import 'package:pachi_kaiten/ui/measurement/measurement_screen.dart';
 import 'package:pachi_kaiten/ui/measurement/rotation_chart.dart';
+import 'package:pachi_kaiten/ui/settings/settings_screen.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/test_db.dart';
@@ -508,5 +510,52 @@ void main() {
     expect(find.text('カウントをリセット'), findsOneWidget); // 主役
     expect(find.text('機種を変えてリセット'), findsOneWidget); // 従
     expect(find.text('機種なしでリセット'), findsNothing); // 主役と同義のため非表示
+  });
+
+  // ---- 設定: 作者の他のアプリ(iOS のみ) ----
+  group('設定の他アプリ紹介欄', () {
+    Future<void> pumpSettings(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(MaterialApp(home: SettingsScreen(services: services)));
+      // 設定は initState で DB(ffi)を読む。スピナーが回っている間は settle しない
+      // ので、runAsync で実時間を進めてから 1 フレーム描く。
+      await tester.runAsync(
+          () async => Future<void>.delayed(const Duration(milliseconds: 50)));
+      await tester.pump();
+    }
+
+    testWidgets('iOS では 2 件が説明付きで並び、はみ出さない', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await pumpSettings(tester);
+
+        expect(find.text('作者の他のアプリ'), findsOneWidget);
+        expect(find.text('ハナジャグ'), findsOneWidget);
+        expect(find.text('コヤカン'), findsOneWidget);
+        expect(find.text('ハナハナ・ジャグラー専用の設定推測と収支記録'), findsOneWidget);
+        expect(find.text('縦横対応の小役カウンター'), findsOneWidget);
+        // 削除済みの旧文言が残っていないこと
+        expect(find.textContaining('広告なし'), findsNothing);
+        expect(tester.takeException(), isNull); // オーバーフローなし
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('Android では節ごと出さない(開けないリンクを見せない)', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        await pumpSettings(tester);
+
+        expect(find.text('作者の他のアプリ'), findsNothing);
+        expect(find.text('ハナジャグ'), findsNothing);
+        expect(find.text('パチ回転計 v1.0.0'), findsOneWidget); // 版数表示は残る
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
   });
 }
