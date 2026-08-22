@@ -8,6 +8,7 @@ class SettingsRepository {
   static const kAddUnit = 'add_unit_default';
   static const kKeepAwake = 'keep_awake';
   static const kBallPrice = 'ball_price'; // グローバル貸玉(4.0 / 1.0)
+  static const kReviewStage = 'review_stage'; // レビュー依頼を出した回数(0..3)
 
   Future<String?> getString(String key) async {
     final rows =
@@ -45,4 +46,13 @@ class SettingsRepository {
 
   Future<void> setBallPrice(double price) =>
       setString(kBallPrice, price.toString());
+
+  /// レビュー依頼を出した回数。しきい値を消化した段数として使う。既定 0。
+  Future<int> reviewStage() async {
+    final v = await getString(kReviewStage);
+    return int.tryParse(v ?? '') ?? 0;
+  }
+
+  Future<void> setReviewStage(int stage) =>
+      setString(kReviewStage, stage.toString());
 }

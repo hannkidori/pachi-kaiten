@@ -1,9 +1,12 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pachi_kaiten/models/entry.dart';
 import 'package:pachi_kaiten/models/machine.dart';
+import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
 import 'package:pachi_kaiten/repositories/settings_repository.dart';
+import 'package:pachi_kaiten/services/review_prompt.dart';
 import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -124,6 +127,66 @@ void main() {
       expect(await settings.ballPrice(), 1.0);
       await settings.setBallPrice(4.0);
       expect(await settings.ballPrice(), 4.0);
+    });
+  });
+
+  group('レビュー依頼のしきい値(iOS)', () {
+    test('しきい値は 50 / 500 / 1000 の 3 段(iOS の年3回上限に合わせる)', () {
+      expect(kReviewMilestones, [50, 500, 1000]);
+    });
+
+    test('各段は到達した回数でだけ true', () {
+      expect(shouldRequestReview(count: 49, stage: 0), isFalse);
+      expect(shouldRequestReview(count: 50, stage: 0), isTrue);
+      // 1 段目を消化したら次は 500 まで出ない
+      expect(shouldRequestReview(count: 499, stage: 1), isFalse);
+      expect(shouldRequestReview(count: 500, stage: 1), isTrue);
+      expect(shouldRequestReview(count: 999, stage: 2), isFalse);
+      expect(shouldRequestReview(count: 1000, stage: 2), isTrue);
+    });
+
+    test('3 段消化後は何回入力しても出さない(打ち止め)', () {
+      expect(shouldRequestReview(count: 1000, stage: 3), isFalse);
+      expect(shouldRequestReview(count: 999999, stage: 3), isFalse);
+      expect(shouldRequestReview(count: 999999, stage: 99), isFalse);
+    });
+
+    group('入力回数の数え方', () {
+      late Database db;
+      late EntryRepository entries;
+      late SettingsRepository settings;
+
+      setUp(() async {
+        db = await openTestDb();
+        entries = EntryRepository(db);
+        settings = SettingsRepository(db);
+      });
+      tearDown(() async => db.close());
+
+      Future<void> add(EntryType type) => entries.insert(Entry(
+          sessionId: 1, type: type, counter: 0, createdAt: 's'));
+
+      test('決定(count)だけを通算で数え、開始・大当り復帰は数えない', () async {
+        expect(await entries.countOfType(EntryType.count), 0);
+        await add(EntryType.start);
+        await add(EntryType.count);
+        await add(EntryType.rebase);
+        await add(EntryType.count);
+        expect(await entries.countOfType(EntryType.count), 2);
+      });
+
+      test('破棄されたセッションの入力は数から消える', () async {
+        await add(EntryType.count);
+        await add(EntryType.count);
+        await entries.deleteBySession(1);
+        expect(await entries.countOfType(EntryType.count), 0);
+      });
+
+      test('依頼済みの段数は保存され、既定は 0', () async {
+        expect(await settings.reviewStage(), 0);
+        await settings.setReviewStage(1);
+        expect(await settings.reviewStage(), 1);
+      });
     });
   });
 

@@ -36,6 +36,14 @@ class EntryRepository {
     return Entry.fromMap(rows.first);
   }
 
+  /// 種別ごとの累計件数(全セッション通算)。レビュー依頼のしきい値判定に使う。
+  /// 破棄されたセッションのイベントは削除済みなので数に入らない。
+  Future<int> countOfType(EntryType type) async {
+    final rows = await db.rawQuery(
+        'SELECT COUNT(*) AS c FROM entries WHERE type = ?', [type.name]);
+    return Sqflite.firstIntValue(rows) ?? 0;
+  }
+
   /// 直前の 1 件が count のときだけ削除する(start / rebase は戻せない)。
   /// 削除したら true。
   Future<bool> deleteLastIfCount(int sessionId) async {

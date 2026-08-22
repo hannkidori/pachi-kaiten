@@ -7,6 +7,7 @@ import 'package:pachi_kaiten/repositories/session_repository.dart';
 import 'package:pachi_kaiten/repositories/settings_repository.dart';
 import 'package:pachi_kaiten/repositories/trace_repository.dart';
 import 'package:pachi_kaiten/services/app_services.dart';
+import 'package:pachi_kaiten/services/review_prompt.dart';
 
 /// テスト用の DB から AppServices を組み立てる。
 AppServices buildTestServices(Database db) {
@@ -23,6 +24,7 @@ AppServices buildTestServices(Database db) {
     settings: settings,
     sessionService: SessionService(
         sessions: sessions, entries: entries, traces: traces),
+    reviewPrompt: ReviewPrompt(entries: entries, settings: settings),
   );
 }
 

@@ -135,6 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ));
     }
     _refresh();
+    // 計測中は割り込まず、画面を出た区切りでだけレビュー依頼を検討する
+    // (条件を満たさなければ何も起きない)。
+    await s.reviewPrompt.maybeRequest();
   }
 
   /// 主役: 機種選択を経由せず直接カウンタ入力へ(クイック計測)。
