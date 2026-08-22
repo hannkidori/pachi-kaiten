@@ -21,7 +21,7 @@ class OtherApp {
 const List<OtherApp> kOtherApps = [
   OtherApp(
     name: 'ハナジャグ',
-    description: 'ハナハナ・ジャグラー専用の設定推測とデータを記録',
+    description: 'ハナハナ・ジャグラー専用の設定推測とデータ記録',
     appStoreId: '6792313623',
   ),
   OtherApp(
