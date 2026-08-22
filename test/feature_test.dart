@@ -248,6 +248,17 @@ void main() {
     });
   });
 
+  group('輸出コンプライアンス', () {
+    test('Info.plist に ITSAppUsesNonExemptEncryption=false がある', () {
+      // 消えると App Store Connect で「暗号化書類」の回答を毎回求められる。
+      final plist = File('ios/Runner/Info.plist').readAsStringSync();
+      final i = plist.indexOf('<key>ITSAppUsesNonExemptEncryption</key>');
+      expect(i, greaterThan(-1), reason: 'キーが無い');
+      expect(plist.substring(i).trimLeft(),
+          contains(RegExp(r'ITSAppUsesNonExemptEncryption</key>\s*<false/>')));
+    });
+  });
+
   group('バージョン表記', () {
     test('設定画面の表示が pubspec.yaml と一致する', () {
       // 片方だけ上げ忘れると、ユーザーに古い版数を見せることになる。

@@ -28,6 +28,11 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- 輸出コンプライアンス: 独自の暗号化は一切実装していない(通信なし・
+	     ローカル SQLite のみ)。false を明記すると App Store Connect の
+	     「暗号化書類」の質問が毎回出なくなる。 -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
