@@ -107,8 +107,12 @@ class _StartScreenState extends State<StartScreen> {
       _machines = machines;
       _recentIds = recentIds;
       if (keepSelectedId != null) {
-        _machine = machines.firstWhere((m) => m.id == keepSelectedId,
-            orElse: () => _machine ?? machines.first);
+        // 対象 → 選択中 → 先頭、の順にフォールバック。全部無い(機種 0 件)なら
+        // null のまま(machines.first で StateError を投げないようにする)。
+        final found = machines.where((m) => m.id == keepSelectedId);
+        _machine = found.isNotEmpty
+            ? found.first
+            : (_machine ?? (machines.isEmpty ? null : machines.first));
       }
       _loading = false;
     });
@@ -165,6 +169,7 @@ class _StartScreenState extends State<StartScreen> {
       if (entered == null) return;
       machine = applyBorder(machine, _ballPrice, entered, _stamp());
       await s.machines.update(machine);
+      if (!mounted) return; // ボーダー入力〜保存の間に離脱した場合
     }
     setState(() => _starting = true);
     try {

@@ -9,6 +9,8 @@ import 'package:pachi_kaiten/repositories/settings_repository.dart';
 import 'package:pachi_kaiten/services/other_apps.dart';
 import 'package:pachi_kaiten/services/review_prompt.dart';
 import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
+import 'package:pachi_kaiten/ui/widgets/counter_field.dart';
+import 'package:pachi_kaiten/ui/widgets/numpad.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/test_db.dart';
@@ -270,6 +272,44 @@ void main() {
       final settings =
           File('lib/ui/settings/settings_screen.dart').readAsStringSync();
       expect(settings, contains("'パチ回転計 v$version'"));
+    });
+  });
+
+  group('カウンタ入力の見せ方(displayCounter)', () {
+    test('先頭の余分な 0 は表示しない', () {
+      expect(displayCounter('05'), '5');
+      expect(displayCounter('007'), '7');
+      expect(displayCounter('0123'), '123');
+    });
+
+    test('0 単体・空はそのまま(0 は正当な入力)', () {
+      expect(displayCounter('0'), '0');
+      expect(displayCounter('00'), '0');
+      expect(displayCounter('000'), '0');
+      expect(displayCounter(''), '');
+    });
+
+    test('先頭が 0 でなければ何も変えない', () {
+      expect(displayCounter('1'), '1');
+      expect(displayCounter('105'), '105');
+      expect(displayCounter('999999'), '999999');
+    });
+
+    test('数値としての解釈は変わらない(表示だけの整形)', () {
+      for (final s in ['', '0', '00', '05', '007', '0123', '1', '105', '999999']) {
+        expect(int.tryParse(displayCounter(s)) ?? 0, int.tryParse(s) ?? 0,
+            reason: '「\$s」の値が変わってはいけない');
+      }
+    });
+
+    test('applyKey は変えていない(桁数の上限も従来どおり)', () {
+      // 表示だけを直す方針にしたので、入力文字列の作られ方は不変。
+      expect(applyKey('', '0'), '0');
+      expect(applyKey('0', '5'), '05'); // 文字列としては従来どおり
+      expect(applyKey('12', '3'), '123');
+      expect(applyKey('123456', '7'), '123456'); // 6桁でクランプ
+      expect(applyKey('12', '⌫'), '1');
+      expect(applyKey('', '⌫'), '');
     });
   });
 

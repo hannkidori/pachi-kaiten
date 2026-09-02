@@ -70,7 +70,7 @@ class CounterField extends StatelessWidget {
                           ? Text(placeholder,
                               style: AppTheme.sans(
                                   size: 14, color: AppColors.faint))
-                          : Text(typed,
+                          : Text(displayCounter(typed),
                               style: AppTheme.mono(
                                   size: 30, weight: FontWeight.w700)),
                     ),
@@ -136,6 +136,15 @@ class CounterField extends StatelessWidget {
       ],
     );
   }
+}
+
+/// 入力中の文字列の見せ方。先頭の余分な 0 だけ落とす(「05」→「5」)。
+///
+/// 入力文字列そのものは変えない(桁数の上限や int への変換結果に影響させない)。
+/// 「0」単体は 0 として正当な入力なのでそのまま残す。
+String displayCounter(String typed) {
+  final trimmed = typed.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+  return trimmed.isEmpty ? typed : trimmed;
 }
 
 /// カーソルを指す Key(テストから存在を確認するため)。
