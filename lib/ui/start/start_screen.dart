@@ -65,11 +65,32 @@ class _StartScreenState extends State<StartScreen> {
   bool _loading = true;
   bool _starting = false;
 
+  /// 機種名検索の入力欄。テンキーとシステムキーボードは同時に使わないので、
+  /// 打ち始めの入力に移るときに閉じる必要がある(閉じないとキーボードが
+  /// テンキーを覆ったままになり、打ち始めを入力できない)。
+  final FocusNode _searchFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
+    // カーソルの出し分けのため、フォーカスの変化で描き直す。
+    _searchFocus.addListener(_onSearchFocusChanged);
     _load();
   }
+
+  @override
+  void dispose() {
+    _searchFocus.removeListener(_onSearchFocusChanged);
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// システムキーボードを閉じる(テンキーを覆わせない)。
+  void _dismissKeyboard() => FocusScope.of(context).unfocus();
 
   /// 短い画面(iPhone SE 第1世代 / iPhone 8 相当)ではテンキー等を詰める。
   bool get _compact => MediaQuery.sizeOf(context).height < 620;
@@ -225,6 +246,7 @@ class _StartScreenState extends State<StartScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
       child: TextField(
+        focusNode: _searchFocus,
         style: AppTheme.sans(size: 14),
         cursorColor: AppColors.accent,
         onChanged: (v) => setState(() => _query = v),
@@ -332,7 +354,11 @@ class _StartScreenState extends State<StartScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           GestureDetector(
-            onTap: () => setState(() => _machine = m),
+            onTap: () {
+              // 機種を選んだ = 検索は済んだ。次は打ち始めの入力なので閉じる。
+              _dismissKeyboard();
+              setState(() => _machine = m);
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
               decoration: BoxDecoration(
@@ -413,7 +439,12 @@ class _StartScreenState extends State<StartScreen> {
 
   // ---------- 打ち始めカウンタ ----------
   Widget _counterSection() {
-    return Padding(
+    return GestureDetector(
+      // 打ち始めの入力に触れたらシステムキーボードを閉じる。CounterField は
+      // 表示専用でタップを受けないため、この層で受けて閉じる。
+      onTap: _dismissKeyboard,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -426,14 +457,20 @@ class _StartScreenState extends State<StartScreen> {
             prevCounter: null, // 打ち始め=前回「—」
             placeholder: '打ち始めの数字',
             height: _compact ? 52 : 58,
+            // 検索欄にフォーカスがある間はカーソルを 2 つ光らせない。
+            showCursor: !_searchFocus.hasFocus,
           ),
           const SizedBox(height: 8),
           Numpad(
             keyHeight: _compact ? 40 : 44,
             spacing: _compact ? 6 : 8,
-            onKey: (k) => setState(() => _counter = applyKey(_counter, k)),
+            onKey: (k) {
+              _dismissKeyboard(); // 覆われたままのキー操作でも確実に閉じる
+              setState(() => _counter = applyKey(_counter, k));
+            },
           ),
         ],
+      ),
       ),
     );
   }

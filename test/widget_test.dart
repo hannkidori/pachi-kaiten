@@ -16,6 +16,8 @@ import 'package:pachi_kaiten/ui/measurement/end_sheets.dart';
 import 'package:pachi_kaiten/ui/measurement/measurement_screen.dart';
 import 'package:pachi_kaiten/ui/measurement/rotation_chart.dart';
 import 'package:pachi_kaiten/ui/settings/settings_screen.dart';
+import 'package:pachi_kaiten/ui/start/start_screen.dart';
+import 'package:pachi_kaiten/ui/widgets/counter_field.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/test_db.dart';
@@ -510,6 +512,80 @@ void main() {
     expect(find.text('カウントをリセット'), findsOneWidget); // 主役
     expect(find.text('機種を変えてリセット'), findsOneWidget); // 従
     expect(find.text('機種なしでリセット'), findsNothing); // 主役と同義のため非表示
+  });
+
+  // ---- スタート画面: 機種名検索(システムキーボード)と打ち始め(テンキー) ----
+  group('スタート画面のキーボードとカーソル', () {
+    Future<void> openWithMachine(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.runAsync(() async {
+        await services.machines.insert(
+            const Machine(name: 'P大海物語5', border4: 16.5, updatedAt: 's'));
+      });
+      await tester.pumpWidget(MaterialApp(home: StartScreen(services: services)));
+      await tester.runAsync(
+          () async => Future<void>.delayed(const Duration(milliseconds: 60)));
+      await tester.pump();
+      // 機種を選ぶまで打ち始め欄は出ない。
+      await tester.tap(find.text('P大海物語5'));
+      await tester.pump();
+    }
+
+    /// 機種名検索(システムキーボードを出す唯一の入力欄)にフォーカスがあるか。
+    bool searchFocused(WidgetTester tester) => tester
+        .widget<EditableText>(find.byType(EditableText))
+        .focusNode
+        .hasFocus;
+
+    testWidgets('機種を選ぶとキーボードが閉じる(テンキーを覆わせない)', (tester) async {
+      await openWithMachine(tester);
+      expect(find.byType(CounterField), findsOneWidget);
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(searchFocused(tester), isTrue);
+
+      await tester.tap(find.text('P大海物語5'));
+      await tester.pump();
+      expect(searchFocused(tester), isFalse,
+          reason: '機種を選んだら検索は済み。次はテンキー入力なので閉じる');
+    });
+
+    testWidgets('検索中はカーソルを 2 つ光らせない', (tester) async {
+      await openWithMachine(tester);
+      expect(find.byKey(kCounterCursorKey), findsOneWidget); // 通常は出る
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(find.byKey(kCounterCursorKey), findsNothing,
+          reason: '検索欄にフォーカスがある間は打ち始め側のカーソルを消す');
+    });
+
+    testWidgets('打ち始め欄をタップするとキーボードが閉じてカーソルが戻る', (tester) async {
+      await openWithMachine(tester);
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      expect(find.byKey(kCounterCursorKey), findsNothing);
+
+      // CounterField は表示専用。親の GestureDetector が閉じる役を持つ。
+      await tester.tap(find.byType(CounterField));
+      await tester.pump();
+      expect(find.byKey(kCounterCursorKey), findsOneWidget);
+    });
+
+    testWidgets('テンキーを押しても閉じる(覆われた状態からの復帰)', (tester) async {
+      await openWithMachine(tester);
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+
+      await tester.tap(find.text('7'));
+      await tester.pump();
+      expect(find.text('7'), findsWidgets); // 入力が入る
+      expect(find.byKey(kCounterCursorKey), findsOneWidget);
+    });
   });
 
   // ---- 収支シート(投資・回収の 2 欄) ----

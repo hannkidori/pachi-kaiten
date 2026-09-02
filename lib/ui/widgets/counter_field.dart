@@ -17,6 +17,10 @@ class CounterField extends StatelessWidget {
   final String placeholder;
   final double height;
 
+  /// 点滅カーソルを出すか。同じ画面にシステムキーボードを使う入力欄があり、
+  /// そちらにフォーカスがあるときは false(カーソルが 2 つ光らないように)。
+  final bool showCursor;
+
   const CounterField({
     super.key,
     required this.typed,
@@ -25,6 +29,7 @@ class CounterField extends StatelessWidget {
     this.error = false,
     this.placeholder = '台の数字',
     this.height = 58,
+    this.showCursor = true,
   });
 
   @override
@@ -70,7 +75,10 @@ class CounterField extends StatelessWidget {
                                   size: 30, weight: FontWeight.w700)),
                     ),
                   ),
-                  _Cursor(color: rebase ? AppColors.hit : AppColors.accent),
+                  if (showCursor)
+                    _Cursor(
+                        key: kCounterCursorKey,
+                        color: rebase ? AppColors.hit : AppColors.accent),
                 ],
               ),
             ),
@@ -130,10 +138,13 @@ class CounterField extends StatelessWidget {
   }
 }
 
+/// カーソルを指す Key(テストから存在を確認するため)。
+const Key kCounterCursorKey = ValueKey('counter-cursor');
+
 /// 点滅カーソル(1.1s)。色は状態で切替(通常=シアン / 復帰=アンバー)。
 class _Cursor extends StatefulWidget {
   final Color color;
-  const _Cursor({required this.color});
+  const _Cursor({super.key, required this.color});
 
   @override
   State<_Cursor> createState() => _CursorState();
