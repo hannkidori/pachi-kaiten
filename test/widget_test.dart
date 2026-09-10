@@ -222,24 +222,37 @@ void main() {
       expect(c.stats.totalRotations, before + 30);
     });
 
-    test('加算単位トグルは +1000 ↔ +500', () async {
+    test('投入金額は 500 → 1000 → 2000 と回る', () async {
       final c = await startController();
       expect(c.unit, 1000);
-      expect(c.unitChipLabel, '+1000');
-      expect(c.commitSubLabel, '+1000円分');
+      expect(c.unitChipLabel, '1000');
+      expect(c.commitSubLabel, '+1000円');
+
+      c.cycleUnit();
+      expect(c.unit, 2000);
+      expect(c.unitChipLabel, '2000');
+      expect(c.commitSubLabel, '+2000円');
 
       c.cycleUnit();
       expect(c.unit, 500);
-      expect(c.unitChipLabel, '+500');
-      expect(c.commitSubLabel, '+500円分');
+      expect(c.commitSubLabel, '+500円');
 
       // 500円単位の決定は yen=500 で記録される。
       type(c, '10');
       await c.commit();
       final entries = await entryRepo.bySession(c.session.id!);
       expect(entries.last.yen, 500);
+
       c.cycleUnit();
-      expect(c.unit, 1000);
+      expect(c.unit, 1000); // 一周して戻る
+    });
+
+    test('C キーは入力を全消去する', () async {
+      final c = await startController();
+      type(c, '123');
+      expect(c.typed, '123');
+      c.tapKey('C');
+      expect(c.typed, '');
     });
 
     test('1つ戻すは直前の count のみ削除する', () async {
@@ -280,7 +293,8 @@ void main() {
     expect(find.text('決定'), findsOneWidget);
     expect(find.text('回転率'), findsOneWidget);
     expect(find.text('--.-'), findsOneWidget); // 未計測
-    expect(find.text('+1000'), findsOneWidget); // 加算単位チップ
+    expect(find.text('1000'), findsOneWidget); // 投入金額ボタン
+    expect(find.text('+1000円'), findsOneWidget); // 決定キーのサブ表示
   });
 
   // ---- グラフの色ルール ----
@@ -447,7 +461,9 @@ void main() {
     await tester.tap(find.text('★ 大当り'));
     await tester.pump();
     expect(c.isHit, isTrue);
-    expect(find.textContaining('復帰値入力中'), findsOneWidget);
+    // 先頭ボタンが取消(×)に差し替わり、入力欄も復帰後の文脈に変わる。
+    expect(find.text('大当り ×'), findsOneWidget);
+    expect(find.text('復帰後の数字'), findsOneWidget);
 
     // テンキーで 500 を入力 → カウンタ表示に反映される
     await tester.tap(find.text('5'));

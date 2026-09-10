@@ -540,132 +540,102 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           _counterInput(),
           SizedBox(height: gap),
           _numpad(),
-          SizedBox(height: gap),
-          _commitButton(),
         ],
       ),
     );
   }
 
-  /// 操作行: [★大当り] [⇄台移動] [+1000⇅ 単位] …… [↺戻す]。
-  /// 左のクラスタは幅が足りなければ横スクロール、戻すは右端に固定(溢れ防止)。
+  /// 操作列: [★ 大当り] [リセット] [戻す] [1000 ⇅] を 4 等分で並べる。
+  /// 大当り中は先頭だけ取消(×)に差し替え、他は伏せる。
   Widget _operationRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                if (c.isHit)
-                  _chip('大当り — 復帰値入力中 ×',
-                      onTap: c.cancelHit,
-                      active: true,
-                      borderColor: const Color(0xB3E3B168))
-                else
-                  _chip('★ 大当り',
-                      onTap: () { _haptic(); c.startHit(); },
-                      borderColor: const Color(0x59E3B168),
-                      textColor: AppColors.hitText),
-                const SizedBox(width: 8),
-                // リセット = 次の台へ急ぐ出口。⊘(禁止/クリア系)で「1つ戻す」と区別。
-                _chip('⊘ リセット',
-                    onTap: c.isHit ? null : _resetFlow,
-                    borderColor: const Color(0x5956D9F0),
-                    textColor: AppColors.accentSoft),
-                const SizedBox(width: 8),
-                _unitButton(),
-              ],
+    final hit = c.isHit;
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          Expanded(
+            child: _opButton(
+              hit ? '大当り ×' : '★ 大当り',
+              onTap: hit ? c.cancelHit : () { _haptic(); c.startHit(); },
+              borderColor: AppColors.hitBorder,
+              textColor: AppColors.hit,
+              filled: hit,
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        _undoButton(),
-      ],
+          const SizedBox(width: 8),
+          // リセット = 次の台へ急ぐ出口(ここまでの計測は履歴に残る)。
+          Expanded(
+            child: _opButton('リセット', onTap: hit ? null : _resetFlow),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _opButton('戻す',
+                onTap: hit ? null : () { _haptic(); c.undo(); }),
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: _unitButton()),
+        ],
+      ),
     );
   }
 
-  Widget _chip(String label,
+  /// 操作列の 1 ボタン。枠線だけで面は光らせない。
+  Widget _opButton(String label,
       {VoidCallback? onTap,
-      bool active = false,
       Color? borderColor,
-      Color? textColor}) {
+      Color? textColor,
+      bool filled = false}) {
     final enabled = onTap != null;
     return Opacity(
       opacity: enabled ? 1 : 0.3,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 32,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: active ? const Color(0x33E3B168) : Colors.transparent,
-            border: Border.all(
-                color: borderColor ?? const Color(0x1FFFFFFF)),
-            borderRadius: BorderRadius.circular(8),
+            color: filled ? const Color(0xFF2A1E06) : Colors.transparent,
+            border: Border.all(color: borderColor ?? AppColors.border),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Text(label,
-              style: AppTheme.sans(
-                  size: 12,
-                  weight: FontWeight.w500,
-                  color: active
-                      ? AppColors.hitText
-                      : (textColor ?? AppColors.subtle))),
+          // 文字を大きくする設定でも 4 等分の枠を割らないよう縮める。
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(label,
+                maxLines: 1,
+                style: AppTheme.sans(
+                    size: 13, color: textColor ?? AppColors.textStrong)),
+          ),
         ),
       ),
     );
   }
 
+  /// 1 回の投入金額「1000 ⇅」。タップで 500 / 1000 / 2000 を回す。
   Widget _unitButton() {
-    // 加算単位トグル「+1000 ⇅」/「+500 ⇅」。
     final gated = c.isHit;
     return Opacity(
-      opacity: gated ? 0.35 : 1,
+      opacity: gated ? 0.3 : 1,
       child: GestureDetector(
         onTap: gated ? null : () { _haptic(); c.cycleUnit(); },
         child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 9),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: AppColors.surfaceAlt,
             border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(c.unitChipLabel,
-                style: AppTheme.mono(
-                    size: 11,
-                    weight: FontWeight.w600,
-                    color: AppColors.textStrong)),
-            const SizedBox(width: 4),
-            Text('⇅',
-                style: AppTheme.sans(size: 9, color: AppColors.mutedDark)),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  Widget _undoButton() {
-    final enabled = !c.isHit;
-    return Opacity(
-      opacity: enabled ? 1 : 0.35,
-      child: GestureDetector(
-        onTap: enabled ? () { _haptic(); c.undo(); } : null,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0x26FFFFFF)),
-            borderRadius: BorderRadius.circular(8),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(c.unitChipLabel,
+                  style: AppTheme.mono(
+                      size: 13,
+                      weight: FontWeight.w500,
+                      color: AppColors.textStrong)),
+              const SizedBox(width: 4),
+              Text('⇅',
+                  style: AppTheme.sans(size: 11, color: AppColors.mutedDark)),
+            ]),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('↺', style: AppTheme.sans(size: 15, color: AppColors.textDim)),
-            const SizedBox(width: 6),
-            Text('戻す',
-                style: AppTheme.sans(size: 12.5, color: AppColors.textDim)),
-          ]),
         ),
       ),
     );
@@ -697,48 +667,16 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   Widget _numpad() => Numpad(
         onKey: c.tapKey,
-        keyHeight: _compact ? 42 : 48,
+        keyHeight: _compact ? 44 : 52,
         spacing: _compact ? 6 : 8,
+        // 決定は左列の下 2 行。左手の親指で押せる位置に置く。
+        commit: NumpadCommit(
+          label: '決定',
+          sub: c.isHit ? '復帰後の値' : c.commitSubLabel,
+          onTap: () => c.commit(),
+          hit: c.isHit,
+        ),
       );
-
-  Widget _commitButton() {
-    final hit = c.isHit;
-    return GestureDetector(
-      // ハプティクスはコミット結果(cash/ball/rebase)に応じて _onChange で発火。
-      onTap: () => c.commit(),
-      child: Container(
-        height: _compact ? 50 : 56,
-        decoration: BoxDecoration(
-          color: hit ? const Color(0xFF2A1E06) : AppColors.accentFill,
-          border: Border.all(
-              color: hit ? AppColors.hit : AppColors.accent, width: 1.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('決定',
-                style: AppTheme.sans(
-                    size: 19,
-                    weight: FontWeight.w700,
-                    letterSpacing: 0.2 * 19,
-                    color: hit ? AppColors.hit : AppColors.text)),
-            const SizedBox(width: 10),
-            Text(
-              hit ? '復帰後の値' : c.commitSubLabel,
-              style: AppTheme.mono(
-                  size: 14,
-                  weight: FontWeight.w600,
-                  color: hit
-                      ? const Color(0xB31C1206)
-                      : const Color(0xBF04262E)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // ---------- 異常確認シート ----------
   Widget _confirmSheet(ConfirmPrompt p) {

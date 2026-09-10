@@ -74,10 +74,10 @@ class MeasurementController extends ChangeNotifier {
   int get unit => _unit;
 
   /// 単位チップの表示。「+1000」/「+500」。
-  String get unitChipLabel => '+$_unit';
+  String get unitChipLabel => '$_unit';
 
-  /// 決定ボタンのサブ表示。「+1000円分」/「+500円分」。
-  String get commitSubLabel => '+$_unit円分';
+  /// 決定ボタンのサブ表示。「+1000円」など。
+  String get commitSubLabel => '+$_unit円';
 
   bool get isHit => _hit;
   bool get isError => _error;
@@ -111,7 +111,9 @@ class MeasurementController extends ChangeNotifier {
 
   // ---- テンキー ----
   void tapKey(String d) {
-    if (d == '⌫') {
+    if (d == 'C') {
+      _typed = '';
+    } else if (d == '⌫') {
       if (_typed.isNotEmpty) _typed = _typed.substring(0, _typed.length - 1);
     } else {
       final next = (_typed + d);
@@ -133,7 +135,7 @@ class MeasurementController extends ChangeNotifier {
   // ---- 単位 ----
   void cycleUnit() {
     if (_hit) return;
-    _unit = _unit == 1000 ? 500 : 1000;
+    _unit = switch (_unit) { 500 => 1000, 1000 => 2000, _ => 500 };
     _notify();
   }
 
