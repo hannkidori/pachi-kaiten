@@ -291,7 +291,8 @@ void main() {
 
     expect(find.text('P大海物語5スペシャル'), findsOneWidget);
     expect(find.text('決定'), findsOneWidget);
-    expect(find.text('回転率'), findsOneWidget);
+    // 「回転率」のラベルは廃止(大きな数字と 回/k で自明にする)。
+    expect(find.text('回/k'), findsOneWidget);
     expect(find.text('--.-'), findsOneWidget); // 未計測
     expect(find.text('1000'), findsOneWidget); // 投入金額ボタン
     expect(find.text('+1000円'), findsOneWidget); // 決定キーのサブ表示

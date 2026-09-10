@@ -257,11 +257,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                   children: [
                     _banner(),
                     _header(),
-                    Container(
-                      height: 1,
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      color: AppColors.hair,
-                    ),
                     Expanded(child: _hero()),
                     _controls(),
                   ],
@@ -340,42 +335,41 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ブランド(シアン・10px)｜区切り線｜機種名 … 終了。クイックも同じ。
-              Text('パチ回転計',
-                  style: AppTheme.mono(
-                      size: 10,
-                      weight: FontWeight.w600,
-                      color: AppColors.accent,
-                      letterSpacing: 0.12 * 10)),
-              Container(
-                width: 1,
-                height: 11,
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                color: AppColors.border,
-              ),
+              // 左は 3 行(アプリ名 / 機種名 / 内訳)。右端に「終了」。
               Expanded(
-                child: Text(
-                  c.isQuick ? '機種なし' : c.machine!.name,
-                  style: AppTheme.sans(
-                      size: 14,
-                      weight: FontWeight.w500,
-                      letterSpacing: 0.02 * 14,
-                      color: c.isQuick ? AppColors.muted : AppColors.text),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('パチ回転計',
+                        style: AppTheme.sans(
+                            size: 11,
+                            weight: FontWeight.w700,
+                            color: AppColors.accent,
+                            letterSpacing: 0.2 * 11)),
+                    const SizedBox(height: 3),
+                    Text(
+                      c.isQuick ? '機種なし' : c.machine!.name,
+                      style: AppTheme.sans(
+                          size: 15,
+                          color: c.isQuick ? AppColors.muted : AppColors.text),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    _statLine([
+                      if (c.hasBorder) ('B', borderText),
+                      ('', '${fmtYen(st.consumedYen)}分'),
+                      ('', '${st.totalRotations}回転'),
+                    ]),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               _endGhostButton(),
             ],
           ),
-          const SizedBox(height: 8),
-          _statLine([
-            if (c.hasBorder) ('B', borderText),
-            ('計測', '${fmtYen(st.consumedYen)}分'),
-            ('総回転', '${st.totalRotations}'),
-          ]),
         ],
       ),
     );
@@ -390,15 +384,15 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         onTap: enabled ? _endFlow : null,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Text('終了',
-              style: AppTheme.sans(size: 12, color: AppColors.textDim)),
+              style: AppTheme.sans(size: 13, color: AppColors.textDim)),
         ),
       ),
     );
@@ -433,95 +427,109 @@ class _MeasurementScreenState extends State<MeasurementScreen>
     final st = c.stats;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
+      // デザインどおり、余白は上・中・下の 3 つで均等に吸収する。
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('回転率',
-              style: AppTheme.sans(
-                  size: 11, color: AppColors.muted, letterSpacing: 0.22 * 11)),
-          const SizedBox(height: 4),
-          // 回転率の数字は余地があれば 96px、狭ければ高さ方向にも縮む
-          // (FittedBox は幅・高さ両方を縮小)。数字を優先して flex を大きめに。
+          const Spacer(),
+          _rateBlock(st),
+          const Spacer(),
           Flexible(
-            flex: 3,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(fmtRate(st.rotationRate),
-                      style: AppTheme.mono(
-                          size: 96,
-                          weight: FontWeight.w600,
-                          height: 0.95,
-                          letterSpacing: -0.02 * 96)),
-                  const SizedBox(width: 10),
-                  Text('回/k',
-                      style: AppTheme.mono(size: 17, color: AppColors.muted)),
-                ],
-              ),
+            flex: 6,
+            child: SizedBox(
+              height: 100,
+              child: RotationChart(stats: st, controller: _chartCtrl),
             ),
           ),
-          // ボーダー比ボックスは hasBorder のときだけ表示(クイック計測では出さない)。
-          if (c.hasBorder) ...[
-            const SizedBox(height: 10),
-            _diffPill(st),
-          ],
-          const SizedBox(height: 14),
-          // グラフはヒーローの残り高さに追従して縮む(自身で溢れないよう保証)。
-          Flexible(
-            flex: 2,
-            child: RotationChart(stats: st, controller: _chartCtrl),
-          ),
+          const Spacer(),
         ],
       ),
     );
   }
 
+  /// 回転率(主役)とボーダー比。機種なしのときは比較できない旨を出す。
+  Widget _rateBlock(RotationStats st) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(fmtRate(st.rotationRate),
+                  style: AppTheme.mono(
+                      size: 104,
+                      weight: FontWeight.w700,
+                      height: 0.9,
+                      letterSpacing: -0.04 * 104)),
+              const SizedBox(width: 8),
+              Text('回/k',
+                  style: AppTheme.mono(size: 16, color: AppColors.muted)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (c.hasBorder) _diffPill(st) else _noBorderPill(),
+      ],
+    );
+  }
+
+  /// 機種なし(ボーダー未登録)のとき、比較が出ない理由をその場に置く。
+  Widget _noBorderPill() {
+    return Container(
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Text('機種を選ぶとボーダー比較',
+          style: AppTheme.sans(size: 13, color: AppColors.mutedDark)),
+    );
+  }
+
+  /// ボーダー比。差分と基準値を 1 本のピルに収める(面は光らせない)。
   Widget _diffPill(RotationStats st) {
     final diff = st.borderDiff;
     final Color color;
-    final Color bg;
     final Color border;
     final String arrow;
     if (diff == null) {
       color = AppColors.mutedDark;
-      bg = Colors.transparent;
-      border = const Color(0x1AFFFFFF);
+      border = AppColors.border;
       arrow = '';
     } else if (diff >= 0) {
       color = AppColors.up;
-      bg = const Color(0x1A3ECF8E);
-      border = const Color(0x403ECF8E);
+      border = AppColors.upBorder;
       arrow = '▲ ';
     } else {
       color = AppColors.down;
-      bg = const Color(0x1AF06A5D);
-      border = const Color(0x40F06A5D);
+      border = AppColors.downBorder;
       arrow = '▼ ';
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: bg,
         border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(diff == null ? '-- --' : '$arrow${fmtDiff(diff)}',
+          Text(diff == null ? '--' : '$arrow${fmtDiff(diff)}',
               style: AppTheme.mono(
-                  size: 24, weight: FontWeight.w600, color: color)),
-          const SizedBox(width: 12),
-          Text('ボーダー比',
-              style: AppTheme.sans(size: 11, color: AppColors.muted)),
+                  size: 13, weight: FontWeight.w700, color: color)),
+          const SizedBox(width: 8),
+          Text('ボーダー ${st.border.toStringAsFixed(1)}',
+              style: AppTheme.mono(size: 13, color: AppColors.muted)),
         ],
       ),
     );
   }
+
 
   // ---------- 操作エリア ----------
 
