@@ -421,7 +421,7 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                hintText: '--.-',
+                hintText: '--', // 32px の「--.-」は点と罫が散らばって見える
                 hintStyle: AppTheme.mono(
                     size: 32, weight: FontWeight.w700, color: AppColors.faint),
                 // 「±0.1」は刻みの説明。値の右に小さく添える。

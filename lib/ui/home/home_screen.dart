@@ -330,7 +330,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _ring(
           onTap: () => _openMeasurement(a.session, a.machine),
           children: [
-            Text(a.rate == null ? '--.-' : a.rate!.toStringAsFixed(1),
+            // 78px の「--.-」は点と罫が散らばって壊れて見えるので「--」に落とす。
+            Text(a.rate == null ? '--' : a.rate!.toStringAsFixed(1),
                 style: AppTheme.mono(
                     size: 78,
                     weight: FontWeight.w700,
