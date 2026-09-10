@@ -454,7 +454,8 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             Flexible(
               flex: 6,
               child: SizedBox(
-                height: 100,
+                // グラフ本体 100px + 数値行。狭ければ Flexible 側で縮む。
+                height: RotationChart.maxTotal,
                 child: RotationChart(stats: st, controller: _chartCtrl),
               ),
             ),

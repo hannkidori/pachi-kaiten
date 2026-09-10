@@ -49,15 +49,12 @@ class RotationChart extends StatelessWidget {
 
   const RotationChart({super.key, required this.stats, this.controller});
 
-  static const double _header = 14;
-  static const double _headerGap = 5;
-  static const double _label = 15;
-  static const double _barGap = 3;
-  static const double _maxBar = 48;
+  static const double _label = 16;
+  static const double _barGap = 6;
+  static const double _maxBar = 100; // デザイン指定のグラフ高さ
 
   /// 設計上の理想の高さ(これ以上は与えられても使わない)。
-  static const double maxTotal =
-      _header + _headerGap + _barGap + _label + _maxBar;
+  static const double maxTotal = _maxBar + _barGap + _label;
 
   @override
   Widget build(BuildContext context) {
@@ -78,36 +75,18 @@ class RotationChart extends StatelessWidget {
                 .clamp(0.0, maxTotal);
 
         // 上から順に、入るぶんだけ確保する(合計は avail を超えない)。
-        final header = _header.clamp(0.0, avail);
-        final afterHeader = avail - header;
-        final headerGap =
-            (header > 0 ? _headerGap : 0.0).clamp(0.0, afterHeader);
-        final bodyH = (afterHeader - headerGap).clamp(0.0, afterHeader);
+        final bodyH = avail;
         final label = _label.clamp(0.0, bodyH);
         final barGap = _barGap.clamp(0.0, bodyH - label);
         final barArea = (bodyH - label - barGap).clamp(0.0, bodyH);
-        // header + headerGap + barArea + barGap + label == avail
+        // barArea + barGap + label == avail
 
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (header > 0)
-              SizedBox(
-                height: header,
-                child: ClipRect(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-if (hasBorder)
-                        Text('B=${border.toStringAsFixed(1)}',
-                            style: AppTheme.mono(
-                                size: 9, color: AppColors.mutedDark)),
-                    ],
-                  ),
-                ),
-              ),
-            if (headerGap > 0) SizedBox(height: headerGap),
+            // 見出し(B=◯◯)は置かない。ボーダーの値はヒーローの比較ピルに出ており、
+            // グラフ側では破線が位置を示すだけで足りる。
             SizedBox(
               height: bodyH,
               child: Stack(
@@ -281,7 +260,8 @@ class _DashedLine extends StatelessWidget {
             width: dash,
             height: 1,
             margin: const EdgeInsets.only(right: gap),
-            color: const Color(0x47FFFFFF),
+            // デザイン指定: ボーダー位置はミントの破線(50%)。
+            color: AppColors.accent.withValues(alpha: 0.5),
           ),
         ),
       );
