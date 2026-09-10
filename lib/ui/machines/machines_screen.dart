@@ -162,10 +162,11 @@ class _MachinesScreenState extends State<MachinesScreen> {
         onTap: _register,
         behavior: HitTestBehavior.opaque,
         child: DashedBorderBox(
-          color: const Color(0x8C56D9F0),
-          radius: 10,
+          color: AppColors.accentBorderSoft,
+          radius: 16,
+          strokeWidth: 1.5,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 17),
             child: Row(
               children: [
                 const Icon(Icons.add, size: 17, color: AppColors.accent),
@@ -174,10 +175,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
                   child: Text(label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTheme.sans(
-                          size: 13,
-                          weight: FontWeight.w600,
-                          color: AppColors.accentSoft)),
+                      style: AppTheme.sans(size: 15, color: AppColors.accent)),
                 ),
               ],
             ),
@@ -200,7 +198,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       itemCount: list.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox.shrink(),
       itemBuilder: (_, i) => _row(list[i]),
     );
   }
@@ -211,10 +209,10 @@ class _MachinesScreenState extends State<MachinesScreen> {
       onTap: () => _edit(m),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(13, 12, 10, 12),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        // 枠付きカードをやめ、機種選択と同じ下線区切りに揃える。
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.hairFaint)),
         ),
         // 2 段組み(履歴と同じ形)。マスタ管理は名前の見分けが最優先なので、
         // 機種名に横幅を全部使わせ、ボーダーは 2 段目に小さく置く。
@@ -225,7 +223,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
               children: [
                 Expanded(
                   child: Text(m.name,
-                      style: AppTheme.sans(size: 13.5),
+                      style: AppTheme.sans(size: 15),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 ),
