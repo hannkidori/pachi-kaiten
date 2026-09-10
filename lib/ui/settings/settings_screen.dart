@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/app_services.dart';
 import '../../services/other_apps.dart';
+import '../machines/machines_screen.dart';
 import '../../theme/app_theme.dart';
 
 /// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止。
@@ -77,6 +78,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _hint('機種のボーダーは貸玉ごとに登録できます'),
                   _keepAwakeRow(),
                   _hint('計測中、画面を消灯しません'),
+                  _section('機種'),
+                  _linkRow('機種の管理', _openMachines),
+                  _hint('機種の登録・ボーダーの編集・削除'),
                   if (showsOtherApps) ...[
                     _section('作者の他のアプリ'),
                     for (final app in kOtherApps) _appRow(app),
@@ -165,6 +169,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       size: 11, color: AppColors.muted, height: 1.4)),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 機種マスタの管理画面へ。ホームからは外したのでここが入口。
+  Future<void> _openMachines() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => MachinesScreen(services: s),
+    ));
+  }
+
+  /// 別画面へ渡す 1 行(右端に ›)。
+  Widget _linkRow(String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Text(label, style: AppTheme.sans(size: 14)),
+            const Spacer(),
+            Text('›', style: AppTheme.sans(size: 16, color: AppColors.faint)),
+          ],
         ),
       ),
     );

@@ -11,7 +11,6 @@ import '../../state/measurement_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../util/format.dart';
 import '../history/history_screen.dart';
-import '../machines/machines_screen.dart';
 import '../measurement/measurement_screen.dart';
 import '../settings/settings_screen.dart';
 import '../start/quick_start_screen.dart';
@@ -190,15 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (_) => HistoryScreen(services: s),
     ));
   }
-
-  Future<void> _openMachines() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => MachinesScreen(services: s),
-    ));
-    if (!mounted) return;
-    _refresh(); // 機種名の変更・削除を前回比ヒーローへ反映する
-  }
-
   Future<void> _openSettings() async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => SettingsScreen(services: s),
@@ -212,21 +202,19 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.fromLTRB(24, 14, 24, 24),
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 14),
                     _appTitle(),
                     Expanded(
                       child: _active != null
                           ? _restoreCard(_active!)
                           : _heroAndStart(),
                     ),
-                    _bottomLinks(),
-                    const SizedBox(height: 8),
+                    _footer(),
                   ],
                 ),
         ),
@@ -236,328 +224,245 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ---------- タイトル ----------
   Widget _appTitle() {
-    return Center(
-      child: Text('パチ回転計',
-          style: AppTheme.mono(
-              size: 14, weight: FontWeight.w600, letterSpacing: 0.34 * 14)),
+    return Padding(
+      padding: const EdgeInsets.only(top: 28),
+      child: Center(
+        child: Text('パチ回転計',
+            style: AppTheme.sans(
+                size: 15,
+                weight: FontWeight.w700,
+                color: AppColors.textStrong,
+                letterSpacing: 0.2 * 15)),
+      ),
     );
   }
 
   // ---------- 前回比ヒーロー + 機種選択カード + 主役の円形スタート ----------
+  /// 開いた瞬間に計測へ入れることを最優先にした並び。
+  /// リングの上端を計測中の表示と揃えるため、固定スペーサーで押し下げる。
   Widget _heroAndStart() {
     return Column(
       children: [
-        Expanded(child: Center(child: _hero())),
-        // 従: 機種を選んで計測(横長カード)。シアンを使わず明度差で立たせる。
-        _machineSelectCard(),
-        const SizedBox(height: 20),
-        // 主役: 機種選択を経由せず直接カウンタ入力へ。
-        _circleButton(
-          label: '計測スタート',
-          sub: 'START',
-          size: 218,
+        const SizedBox(height: 165),
+        _ring(
           onTap: _startQuick,
+          children: [
+            Text('計測スタート',
+                style: AppTheme.sans(
+                    size: 34,
+                    weight: FontWeight.w700,
+                    letterSpacing: 0.06 * 34)),
+            const SizedBox(height: 10),
+            Text('START',
+                style: AppTheme.mono(
+                    size: 12,
+                    color: AppColors.accent,
+                    letterSpacing: 0.35 * 12)),
+          ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 40),
+        _machineSelectCard(),
+        const Spacer(),
       ],
     );
   }
-
-  Widget _machineSelectCard() {
-    return GestureDetector(
-      onTap: _startWithMachine,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        decoration: BoxDecoration(
-          color: const Color(0x12FFFFFF), // rgba(255,255,255,0.07)
-          border: Border.all(color: const Color(0x24FFFFFF)), // 0.14
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('機種を選んで計測',
-                      style: AppTheme.sans(
-                          size: 15,
-                          weight: FontWeight.w700,
-                          color: const Color(0xFFF1ECE3))),
-                  const SizedBox(height: 4),
-                  Text('ボーダーとの比較がでます',
-                      style: AppTheme.sans(
-                          size: 11, height: 1.5, color: AppColors.subtle)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Icon(Icons.chevron_right, size: 18, color: AppColors.subtle),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _hero() {
-    final t = _latest;
-    return GestureDetector(
-      onTap: _openHistory,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('前回の計測',
-              style: AppTheme.sans(
-                  size: 10, color: AppColors.faint, letterSpacing: 0.24 * 10)),
-          const SizedBox(height: 10),
-          if (t == null) ...[
-            Text('--.-',
-                style: AppTheme.mono(
-                    size: 52, weight: FontWeight.w600, color: AppColors.mutedDark)),
-            const SizedBox(height: 10),
-            Text('計測を終えると、ここに履歴が残ります',
-                style: AppTheme.sans(size: 12, color: AppColors.mutedDark)),
-          ] else ...[
-            // クイック計測(機種名なし)は機種名の行を出さない。
-            if (t.machineName != null) ...[
-              Text(t.machineName!,
-                  style: AppTheme.sans(size: 14, color: AppColors.textStrong),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
-              const SizedBox(height: 6),
-            ],
-            // 回転率 + 単位 + 差分バッジ。文字拡大時に横へ溢れないよう縮小する。
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(fmtRate(t.rotationRate),
-                      style: AppTheme.mono(
-                          size: 52, weight: FontWeight.w600, height: 1.0)),
-                  const SizedBox(width: 6),
-                  Text('回/k',
-                      style: AppTheme.mono(size: 14, color: AppColors.muted)),
-                  if (t.borderDiff != null) ...[
-                    const SizedBox(width: 12),
-                    _diffBadge(t.borderDiff!),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('${fmtShortDate(t.date)}・${t.totalRotations}回転',
-                style: AppTheme.mono(size: 11.5, color: AppColors.muted)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _diffBadge(double diff) {
-    final up = diff >= 0;
-    final color = up ? AppColors.up : AppColors.down;
-    return Text('${up ? '▲' : '▼'} B${fmtDiff(diff)}',
-        style: AppTheme.mono(size: 15, weight: FontWeight.w700, color: color));
-  }
-
   // ---------- 復帰カード ----------
+  /// 中断中のセッションを 1 タップで再開する。リングの上端は通常時と揃える
+  /// (機種名の 1 行ぶんスペーサーを縮める)。
+  /// 「機種を選んで計測 ›」。主役(リング)の下に置く従の導線。
+  Widget _machineSelectCard() {
+    return Center(
+      child: GestureDetector(
+        onTap: _startWithMachine,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('機種を選んで計測',
+                  style: AppTheme.sans(size: 14, color: AppColors.textStrong)),
+              const SizedBox(width: 8),
+              Text('›', style: AppTheme.sans(size: 16, color: AppColors.faint)),
+            ],
+          ),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(22),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _restoreCard(_ActiveSummary a) {
+    final quick = a.machine == null;
     return Column(
       children: [
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                            color: AppColors.accent, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('計測中のセッションがあります',
-                          style: AppTheme.sans(
-                              size: 12,
-                              color: AppColors.muted,
-                              letterSpacing: 0.04 * 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  // クイック計測(機種名なし)は機種名の行を出さない。
-                  if (a.machine != null) ...[
-                    Text(a.machine!.name,
+        SizedBox(height: quick ? 165 : 14),
+        if (!quick) ...[
+          Text(a.machine!.name,
+              textAlign: TextAlign.center,
+              style: AppTheme.sans(size: 14, color: AppColors.textStrong),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 130 - 14),
+        ],
+        _ring(
+          onTap: () => _openMeasurement(a.session, a.machine),
+          children: [
+            Text(a.rate == null ? '--.-' : a.rate!.toStringAsFixed(1),
+                style: AppTheme.mono(
+                    size: 78,
+                    weight: FontWeight.w700,
+                    height: 1,
+                    letterSpacing: -0.02 * 78)),
+            const SizedBox(height: 8),
+            Text('回/k', style: AppTheme.mono(size: 14, color: AppColors.muted)),
+            const SizedBox(height: 26),
+            Text('タップで再開',
+                style: AppTheme.sans(
+                    size: 14,
+                    weight: FontWeight.w700,
+                    color: AppColors.accent,
+                    letterSpacing: 0.2 * 14)),
+          ],
+        ),
+        const SizedBox(height: 40),
+        _restoreMeta(a),
+        const Spacer(),
+      ],
+    );
+  }
+
+  /// 「1,000円 · 25回転  最終 12:33」。
+  Widget _restoreMeta(_ActiveSummary a) {
+    return SizedBox(
+      height: 44,
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${a.consumedYen} · ${a.totalSpins}回転',
+                  style: AppTheme.mono(size: 14, color: AppColors.muted)),
+              const SizedBox(width: 8),
+              Text('最終 ${a.lastLabel}',
+                  style: AppTheme.mono(size: 14, color: AppColors.mutedDark)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 主役のリング 300×300。面は塗らず、ミント 2px の枠と外側の薄いハローだけ。
+  Widget _ring({required VoidCallback onTap, required List<Widget> children}) {
+    return Center(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 300,
+          height: 300,
+          decoration: const BoxDecoration(
+            color: AppColors.bg,
+            shape: BoxShape.circle,
+            border: Border.fromBorderSide(
+                BorderSide(color: AppColors.accent, width: 2)),
+            boxShadow: [
+              BoxShadow(color: AppColors.accentHalo, spreadRadius: 14),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: children,
+          ),
+        ),
+      ),
+    );
+  }
+  /// 最下部の 2 リンク(履歴 | 設定)。控えめだが 44px 以上で確実に押せる。
+  /// フッター。通常は 履歴 / 前回 / 設定、計測中は 破棄 / 終了して記録 / 設定。
+  Widget _footer() {
+    final a = _active;
+    if (a == null) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _roundButton('履歴', _openHistory),
+          if (_latest != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: GestureDetector(
+                onTap: _openHistory,
+                behavior: HitTestBehavior.opaque,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('前回 ',
                         style: AppTheme.sans(
-                            size: 21,
-                            weight: FontWeight.w600,
-                            color: AppColors.text),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 8),
+                            size: 12, color: AppColors.mutedDark)),
+                    Text('${fmtRate(_latest!.rotationRate)}回/k',
+                        style:
+                            AppTheme.mono(size: 12, color: AppColors.muted)),
                   ],
-                  _restoreMeta(a),
-                  const SizedBox(height: 4),
-                  Text('最終入力 ${a.lastLabel}',
-                      style:
-                          AppTheme.mono(size: 11, color: AppColors.mutedDark)),
-                  const SizedBox(height: 22),
-                  _circleButton(
-                    label: '再開',
-                    sub: 'RESUME',
-                    size: 164,
-                    onTap: () => _openMeasurement(a.session, a.machine),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-        // 終了して記録(アウトライン46px)
-        _outlineButton('終了して記録',
-            () => _openMeasurement(a.session, a.machine,
-                intent: MeasureIntent.end)),
-        const SizedBox(height: 10),
-        // 破棄(テキスト。1 回目タップで確認文言に変化)
-        GestureDetector(
-          onTap: () => _tapDiscard(a.session),
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Text(
-              _discardArmed ? 'もう一度タップで破棄' : 'このセッションを破棄',
-              textAlign: TextAlign.center,
-              style: AppTheme.sans(
-                  size: 12.5,
-                  color: _discardArmed ? AppColors.down : AppColors.mutedDark),
+          _roundButton('設定', _openSettings),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        _roundButton('破棄', () => _tapDiscard(a.session),
+            danger: _discardArmed),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () => _openMeasurement(a.session, a.machine,
+                intent: MeasureIntent.end),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 52,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.borderStrong),
+                borderRadius: BorderRadius.circular(26),
+              ),
+              child: Text('終了して記録',
+                  style:
+                      AppTheme.sans(size: 15, color: AppColors.textStrong)),
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(width: 12),
+        _roundButton('設定', _openSettings),
       ],
     );
   }
 
-  Widget _restoreMeta(_ActiveSummary a) {
-    return Text.rich(
-      TextSpan(children: [
-        TextSpan(
-            text: '計測 ${a.consumedYen}分 ・ 総回転 ${a.totalSpins} ・ ',
-            style: AppTheme.mono(size: 12, color: AppColors.muted)),
-        TextSpan(
-            text: '${fmtRate(a.rate)}回/k',
-            style: AppTheme.mono(
-                size: 12,
-                weight: FontWeight.w600,
-                // まだ 1 回も決定していない(--.-)ときに緑=好調に見えないよう中立色。
-                color: a.rate == null ? AppColors.muted : AppColors.up)),
-      ]),
-    );
-  }
-
-  // ---------- 円形ボタン(グラデ + グロー) ----------
-  Widget _circleButton({
-    required String label,
-    String? sub,
-    required double size,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: const BoxDecoration(
-          color: AppColors.bg,
-          shape: BoxShape.circle,
-          border: Border.fromBorderSide(
-              BorderSide(color: AppColors.accent, width: 2)),
-          // 面を光らせず、外側に薄いハローだけ置く(デザイン: 0 0 0 14px 5%)。
-          boxShadow: [
-            BoxShadow(color: AppColors.accentHalo, spreadRadius: 14),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(label,
-                style: AppTheme.sans(
-                    size: size >= 200 ? 20 : 18,
-                    weight: FontWeight.w700,
-                    color: AppColors.text)),
-            if (sub != null) ...[
-              const SizedBox(height: 4),
-              Text(sub,
-                  style: AppTheme.mono(
-                      size: 10,
-                      weight: FontWeight.w600,
-                      letterSpacing: 0.3 * 10,
-                      color: const Color(0xB304262E))),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _outlineButton(String label, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 46,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(label,
-            style: AppTheme.sans(size: 13.5, color: AppColors.textStrong)),
-      ),
-    );
-  }
-
-  /// 最下部の 2 リンク(履歴 | 設定)。控えめだが 44px 以上で確実に押せる。
-  Widget _bottomLinks() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _bottomLink(Icons.history, '履歴', _openHistory),
-        _linkDivider(),
-        _bottomLink(Icons.grid_view_rounded, '機種', _openMachines),
-        _linkDivider(),
-        _bottomLink(Icons.settings_outlined, '設定', _openSettings),
-      ],
-    );
-  }
-
-  Widget _linkDivider() =>
-      Container(width: 1, height: 14, color: AppColors.border);
-
-  Widget _bottomLink(IconData icon, String label, VoidCallback onTap) {
+  /// フッターの丸ボタン 52×52。枠線だけで面は光らせない。
+  Widget _roundButton(String label, VoidCallback onTap,
+      {bool danger = false}) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        // 3 つ並ぶので左右は詰めるが、縦 12 + 文字高で 44px 以上を確保する。
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: AppColors.muted),
-            const SizedBox(width: 6),
-            Text(label,
-                style: AppTheme.sans(size: 12, color: AppColors.muted)),
-          ],
+      child: Container(
+        width: 52,
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: danger ? AppColors.down : AppColors.border),
         ),
+        child: Text(label,
+            style: AppTheme.sans(
+                size: 13,
+                color: danger ? AppColors.down : AppColors.muted)),
       ),
     );
   }
