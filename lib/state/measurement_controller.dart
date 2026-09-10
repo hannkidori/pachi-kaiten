@@ -104,7 +104,12 @@ class MeasurementController extends ChangeNotifier {
       );
 
   /// DB からイベントを読み込む。
+  /// 一度でも [load] を通したか(画面側の重複呼び出しを避ける)。
+  bool _loaded = false;
+  bool get loaded => _loaded;
+
   Future<void> load() async {
+    _loaded = true;
     _entries = await service.entriesOf(session.id!);
     _notify();
   }

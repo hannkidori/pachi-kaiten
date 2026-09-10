@@ -27,8 +27,10 @@ class MeasurementScreen extends StatefulWidget {
   final MeasurementController controller;
   final AppServices services;
 
-  /// 計測画面のスリープ防止(設定でOFF可。デフォルトON)。
-  final bool keepAwake;
+  /// 計測画面のスリープ防止。null なら設定から読む。
+  /// 画面を開く前に DB を読むとホームが一瞬見えてしまうため、既定では
+  /// 開いたあとに自分で読む(テストからは直接指定する)。
+  final bool? keepAwake;
 
   /// 開いた直後に回収額シートへ直行するか。
   final MeasureIntent initialIntent;
@@ -37,7 +39,7 @@ class MeasurementScreen extends StatefulWidget {
     super.key,
     required this.controller,
     required this.services,
-    this.keepAwake = true,
+    this.keepAwake,
     this.initialIntent = MeasureIntent.normal,
   });
 
@@ -56,6 +58,16 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   late MeasurementController _c;
   MeasurementController get c => _c;
+
+  /// 実際に有効化したか(dispose で無効化する対象かの判断に使う)。
+  bool _keepAwake = false;
+
+  Future<void> _applyKeepAwake() async {
+    final on = widget.keepAwake ?? await s.settings.keepAwake();
+    if (!mounted || !on) return;
+    _keepAwake = true;
+    WakelockPlus.enable();
+  }
   AppServices get s => widget.services;
 
   @override
@@ -67,7 +79,10 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       duration: const Duration(milliseconds: 300),
     );
     _lastFeedbackTick = _c.feedbackTick;
-    if (widget.keepAwake) WakelockPlus.enable();
+    _applyKeepAwake();
+    // 開く前に読み込むとホームが一瞬見えるため、開いてから読む。
+    // 読み終わるまでは未計測の表示(--)になる。
+    if (!_c.loaded) _c.load();
     _c.addListener(_onChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _snapChart();
@@ -79,7 +94,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   void dispose() {
     _c.removeListener(_onChange);
     _c.dispose(); // 画面と寿命を共にする(遅延通知のタイマーもここで止まる)
-    if (widget.keepAwake) WakelockPlus.disable();
+    if (_keepAwake) WakelockPlus.disable();
     _shake.dispose();
     _chartCtrl.dispose();
     super.dispose();

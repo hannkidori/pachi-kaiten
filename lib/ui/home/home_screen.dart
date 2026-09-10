@@ -14,6 +14,7 @@ import '../history/history_screen.dart';
 import '../measurement/measurement_screen.dart';
 import '../settings/settings_screen.dart';
 import '../start/quick_start_screen.dart';
+import '../widgets/instant_route.dart';
 import '../start/start_screen.dart';
 
 /// ホーム。計測開始までの通過点。計測中セッションがあれば復帰カードを最優先表示し、
@@ -109,17 +110,13 @@ class _HomeScreenState extends State<HomeScreen> {
       session: session,
       machine: machine,
     );
-    await controller.load();
-    final keepAwake = await s.settings.keepAwake();
-    if (!mounted) return;
     // 履歴が 1 件増えたか(=計測を終えたか)を id で見分ける。単に「戻る」で
     // 抜けた場合と区別してレビュー依頼の判定に使う。
     final beforeTraceId = _latest?.id;
-    final discarded = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (_) => MeasurementScreen(
+    final discarded = await Navigator.of(context).push<bool>(instantRoute(
+      (_) => MeasurementScreen(
         controller: controller,
         services: s,
-        keepAwake: keepAwake,
         initialIntent: intent,
       ),
     ));
@@ -146,8 +143,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 主役: 機種選択を経由せず直接カウンタ入力へ(クイック計測)。
   Future<void> _startQuick() async {
+    // 計測へ入る経路はアニメーションを挟まない(閉じ際にホームが見えて
+    // 残像になるのを防ぐ。片手で急いで使うアプリでもある)。
     final result = await Navigator.of(context).push<StartResult>(
-      MaterialPageRoute(builder: (_) => QuickStartScreen(services: s)),
+      instantRoute((_) => QuickStartScreen(services: s)),
     );
     if (result != null) {
       await _openMeasurement(result.session, result.machine);
@@ -157,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// 従: 機種を選んで計測(ボーダーとの比較が要るとき)。
   Future<void> _startWithMachine() async {
     final result = await Navigator.of(context).push<StartResult>(
-      MaterialPageRoute(builder: (_) => StartScreen(services: s)),
+      instantRoute((_) => StartScreen(services: s)),
     );
     if (result != null) {
       await _openMeasurement(result.session, result.machine);
