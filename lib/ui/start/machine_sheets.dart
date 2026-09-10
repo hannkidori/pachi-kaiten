@@ -207,11 +207,14 @@ class _MachineFormSheet extends StatefulWidget {
 }
 
 class _MachineFormSheetState extends State<_MachineFormSheet> {
-  /// ステッパーの下限・上限・刻み。現実的なボーダーの範囲に収める。
-  static const _min = 10.0;
-  static const _max = 40.0;
+  /// ±ボタンの刻みと、空欄から押し始めたときの起点。
   static const _step = 0.1;
-  static const _presets = [17.0, 18.0, 19.0, 20.0, 22.0];
+  static const _fallback = 18.0;
+
+  /// プリセット。1円は貸玉が 1/4 なので、ボーダーの目安も約 4 倍になる。
+  List<double> get _presets => widget.ballPrice <= 1.5
+      ? const [68.0, 72.0, 76.0, 80.0, 88.0]
+      : const [17.0, 18.0, 19.0, 20.0, 22.0];
 
   late final TextEditingController _name = TextEditingController(
     // 検索文字列を引き継ぐ(カーソルは末尾に置く)。
@@ -219,26 +222,38 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
   )..selection = TextSelection.collapsed(
       offset: (widget.initialName ?? '').length);
 
-  double _border = 18.5;
+  /// ボーダーは初期値なし。キーボードで直接打てるようにするため文字列で持つ。
+  final _border = TextEditingController();
   Timer? _repeat;
 
   @override
   void dispose() {
     _repeat?.cancel();
     _name.dispose();
+    _border.dispose();
     super.dispose();
   }
 
   bool get _duplicate => isDuplicateName(_name.text, widget.existingNames);
-  bool get _canSubmit => _name.text.trim().isNotEmpty && !_duplicate;
 
-  void _nudge(double delta) {
+  /// 入力中のボーダー。未入力・範囲外は null。
+  double? get _borderValue => parseBorder(_border.text);
+
+  bool get _canSubmit =>
+      _name.text.trim().isNotEmpty && !_duplicate && _borderValue != null;
+
+  void _setBorder(double v) {
+    // 0.1 刻みの加算で誤差が溜まらないよう、毎回丸め直す。
+    final rounded = (v.clamp(_step, kBorderMax) * 10).roundToDouble() / 10;
     setState(() {
-      // 0.1 刻みの加算で誤差が溜まらないよう、毎回丸め直す。
-      final next = (_border + delta).clamp(_min, _max);
-      _border = (next * 10).roundToDouble() / 10;
+      _border.text = rounded.toStringAsFixed(1);
+      _border.selection =
+          TextSelection.collapsed(offset: _border.text.length);
     });
   }
+
+  /// 空欄から押したときは [_fallback] を起点にする(0.1 から数え上げさせない)。
+  void _nudge(double delta) => _setBorder((_borderValue ?? _fallback) + delta);
 
   /// 長押しで連続。押している間だけ繰り返す。
   void _startRepeat(double delta) {
@@ -259,7 +274,7 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
       context,
       RegisterMachineResult(
         name: _name.text.trim(),
-        border: _border,
+        border: _borderValue!,
         startNow: startNow,
       ),
     );
@@ -351,8 +366,9 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
         inputFormatters: machineNameInputFormatters,
         onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          // isDense を付けると枠が細く潰れるので使わない。
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           filled: true,
           fillColor: AppColors.surfaceAlt,
           hintText: '機種名',
@@ -376,25 +392,36 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
         _stepKey('−', -_step),
         const SizedBox(width: 10),
         Expanded(
-          child: Container(
+          child: SizedBox(
             height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(_border.toStringAsFixed(1),
-                    style: AppTheme.mono(size: 32, weight: FontWeight.w700)),
-                const SizedBox(width: 6),
-                Text('±0.1',
-                    style:
-                        AppTheme.mono(size: 12, color: AppColors.mutedDark)),
-              ],
+            child: TextField(
+              controller: _border,
+              textAlign: TextAlign.center,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: borderInputFormatters,
+              style: AppTheme.mono(size: 32, weight: FontWeight.w700),
+              cursorColor: AppColors.accent,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                hintText: '--.-',
+                hintStyle: AppTheme.mono(
+                    size: 32, weight: FontWeight.w700, color: AppColors.faint),
+                // 「±0.1」は刻みの説明。値の右に小さく添える。
+                suffixText: '±0.1',
+                suffixStyle:
+                    AppTheme.mono(size: 12, color: AppColors.mutedDark),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide:
+                      const BorderSide(color: AppColors.accent, width: 1.5),
+                ),
+              ),
             ),
           ),
         ),
@@ -426,13 +453,14 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
   }
 
   Widget _presetRow() {
+    final presets = _presets;
     return Row(
       children: [
-        for (var i = 0; i < _presets.length; i++) ...[
+        for (var i = 0; i < presets.length; i++) ...[
           if (i > 0) const SizedBox(width: 6),
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _border = _presets[i]),
+              onTap: () => _setBorder(presets[i]),
               behavior: HitTestBehavior.opaque,
               child: Container(
                 height: 32,
@@ -443,7 +471,7 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
                 ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
-                  child: Text(_presets[i].toStringAsFixed(1),
+                  child: Text(presets[i].toStringAsFixed(1),
                       style:
                           AppTheme.mono(size: 12, color: AppColors.muted)),
                 ),

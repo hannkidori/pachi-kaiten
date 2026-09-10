@@ -601,7 +601,8 @@ void main() {
   group('機種登録シート', () {
     late RegisterMachineResult? result;
 
-    Future<void> open(WidgetTester tester, {bool allowStart = true}) async {
+    Future<void> open(WidgetTester tester,
+        {bool allowStart = true, double ballPrice = 4.0}) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -614,7 +615,7 @@ void main() {
               child: TextButton(
                 onPressed: () async => result = await showRegisterMachine(
                     context,
-                    ballPrice: 4.0,
+                    ballPrice: ballPrice,
                     allowStart: allowStart),
                 child: const Text('open'),
               ),
@@ -627,27 +628,52 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
     }
 
-    testWidgets('初期値 18.5 から ＋/− が 0.1 刻みで動く', (tester) async {
+    /// ボーダー欄(中央の大きい数字)の現在値。
+    String borderText(WidgetTester tester) => tester
+        .widgetList<TextField>(find.byType(TextField))
+        .last
+        .controller!
+        .text;
+
+    testWidgets('初期値はなし。＋/− は 18.0 を起点に 0.1 刻みで動く', (tester) async {
       await open(tester);
-      expect(find.text('18.5'), findsOneWidget);
+      expect(borderText(tester), ''); // 初期は空欄
 
       await tester.tap(find.text('＋'));
       await tester.pump();
-      expect(find.text('18.6'), findsOneWidget);
+      expect(borderText(tester), '18.1'); // 空欄からは 18.0 起点
 
       await tester.tap(find.text('−'));
       await tester.pump();
       await tester.tap(find.text('−'));
       await tester.pump();
-      expect(find.text('18.4'), findsOneWidget);
+      expect(borderText(tester), '17.9');
     });
 
-    testWidgets('プリセットで即その値になる', (tester) async {
+    testWidgets('ボーダーはキーボードで直接入力できる', (tester) async {
+      await open(tester);
+      await tester.enterText(find.byType(TextField).last, '18.7');
+      await tester.pump();
+      expect(borderText(tester), '18.7');
+
+      // 打った値を起点に ± が効く。
+      await tester.tap(find.text('＋'));
+      await tester.pump();
+      expect(borderText(tester), '18.8');
+    });
+
+    testWidgets('プリセットで即その値になる(1円は約4倍の目安)', (tester) async {
       await open(tester);
       await tester.tap(find.text('22.0'));
       await tester.pump();
-      // プリセット行と中央値の 2 か所に出る。
-      expect(find.text('22.0'), findsNWidgets(2));
+      expect(borderText(tester), '22.0');
+
+    });
+
+    testWidgets('1円のプリセットは約4倍の目安になる', (tester) async {
+      await open(tester, ballPrice: 1.0);
+      expect(find.text('88.0'), findsOneWidget); // 4円の 22.0 に対応
+      expect(find.text('22.0'), findsNothing);
     });
 
     testWidgets('機種名が空のうちは登録できない', (tester) async {
@@ -660,13 +686,20 @@ void main() {
 
     testWidgets('「登録のみ」は計測に入らない印を返す', (tester) async {
       await open(tester);
-      await tester.enterText(find.byType(TextField), 'P大海物語5');
+      await tester.enterText(find.byType(TextField).first, 'P大海物語5');
       await tester.pump();
 
+      // 機種名だけではまだ登録できない(ボーダーが未入力)。
+      await tester.tap(find.text('登録のみ'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(result, isNull);
+
+      await tester.enterText(find.byType(TextField).last, '18.7');
+      await tester.pump();
       await tester.tap(find.text('登録のみ'));
       await tester.pump(const Duration(milliseconds: 400));
       expect(result!.name, 'P大海物語5');
-      expect(result!.border, 18.5);
+      expect(result!.border, 18.7);
       expect(result!.startNow, isFalse);
     });
 
