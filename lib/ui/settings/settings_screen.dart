@@ -204,8 +204,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Text('加算単位のデフォルト', style: AppTheme.sans(size: 14)),
-          const Spacer(),
+          // 文字を大きくする設定でもセグメントを押し出さないよう、
+          // ラベル側を縮める(はみ出す前に省略する)。
+          Expanded(
+            child: Text('加算単位のデフォルト',
+                style: AppTheme.sans(size: 14),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 8),
           _segment('1000', _addUnit == 1000, () => _setAddUnit(1000)),
           const SizedBox(width: 6),
           _segment('500', _addUnit == 500, () => _setAddUnit(500)),
@@ -219,8 +226,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
-          Text('貸玉', style: AppTheme.sans(size: 14)),
-          const Spacer(),
+          Expanded(
+            child: Text('貸玉',
+                style: AppTheme.sans(size: 14),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 8),
           _segment('4円', _ballPrice > 1.5, () => _setBallPrice(4.0)),
           const SizedBox(width: 6),
           _segment('1円', _ballPrice <= 1.5, () => _setBallPrice(1.0)),
@@ -254,8 +266,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Row(
         children: [
-          Text('計測中のスリープ防止', style: AppTheme.sans(size: 14)),
-          const Spacer(),
+          Expanded(
+            child: Text('計測中のスリープ防止',
+                style: AppTheme.sans(size: 14),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: 8),
           Switch(
             value: _keepAwake,
             onChanged: _setKeepAwake,

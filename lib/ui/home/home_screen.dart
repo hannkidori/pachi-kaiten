@@ -168,6 +168,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _tapDiscard(Session session) {
     if (!_discardArmed) {
       setState(() => _discardArmed = true);
+      // 丸ボタンは色しか変わらず armed が伝わりにくいので、文字でも知らせる。
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('もう一度押すと破棄します',
+            style: AppTheme.sans(size: 12.5, color: AppColors.text)),
+        backgroundColor: AppColors.surface,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 2600),
+      ));
       _discardTimer?.cancel();
       _discardTimer = Timer(const Duration(milliseconds: 2600), () {
         if (mounted) setState(() => _discardArmed = false);
@@ -222,6 +230,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// 縦に余裕のない端末(小型 Android など)。リングと固定余白をそのまま置くと
+  /// フッターがはみ出すため、まとめて一段小さくする。
+  bool get _short => MediaQuery.sizeOf(context).height < 720;
+
+  /// リングの直径。
+  double get _ringSize => _short ? 232 : 300;
+
+  /// タイトルからリングまでの固定余白。計測中は機種名 1 行ぶん(35)を引く。
+  double get _topGap => _short ? 56 : 165;
+
   // ---------- タイトル ----------
   Widget _appTitle() {
     return Padding(
@@ -243,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _heroAndStart() {
     return Column(
       children: [
-        const SizedBox(height: 165),
+        SizedBox(height: _topGap),
         _ring(
           onTap: _startQuick,
           children: [
@@ -260,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     letterSpacing: 0.35 * 12)),
           ],
         ),
-        const SizedBox(height: 40),
+        SizedBox(height: _short ? 24 : 40),
         _machineSelectCard(),
         const Spacer(),
       ],
@@ -300,14 +318,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final quick = a.machine == null;
     return Column(
       children: [
-        SizedBox(height: quick ? 165 : 14),
+        SizedBox(height: quick ? _topGap : 14),
         if (!quick) ...[
           Text(a.machine!.name,
               textAlign: TextAlign.center,
               style: AppTheme.sans(size: 14, color: AppColors.textStrong),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 130 - 14),
+          SizedBox(height: _topGap - 35),
         ],
         _ring(
           onTap: () => _openMeasurement(a.session, a.machine),
@@ -329,7 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     letterSpacing: 0.2 * 14)),
           ],
         ),
-        const SizedBox(height: 40),
+        SizedBox(height: _short ? 24 : 40),
         _restoreMeta(a),
         const Spacer(),
       ],
@@ -364,8 +382,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 300,
-          height: 300,
+          width: _ringSize,
+          height: _ringSize,
           decoration: const BoxDecoration(
             color: AppColors.bg,
             shape: BoxShape.circle,
@@ -375,9 +393,14 @@ class _HomeScreenState extends State<HomeScreen> {
               BoxShadow(color: AppColors.accentHalo, spreadRadius: 14),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: children,
+          // 文字を大きくする設定でもリングの中で収める。
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: children,
+            ),
           ),
         ),
       ),

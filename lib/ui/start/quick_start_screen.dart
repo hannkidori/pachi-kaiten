@@ -33,7 +33,9 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
   }
 
   /// 短い画面(iPhone SE 第1世代 / iPhone 8 相当)ではテンキー等を詰める。
-  bool get _compact => MediaQuery.sizeOf(context).height < 620;
+  /// 縦に余裕のない端末では入力まわりを詰める。文字拡大で本文が伸びても
+  /// テンキーがはみ出さないよう、しきい値は広めに取る。
+  bool get _compact => MediaQuery.sizeOf(context).height < 700;
 
   Future<void> _load() async {
     final addUnit = await s.settings.addUnitDefault();
@@ -79,8 +81,12 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
                   // 本文エリア中央にモードカード。
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 22, 18, 26),
-                      child: Center(child: _modeCard()),
+                      padding: EdgeInsets.fromLTRB(
+                          18, _compact ? 12 : 22, 18, _compact ? 12 : 26),
+                      // 説明カードは残り高さに収める(入りきらなければスクロール)。
+                      child: Center(
+                        child: SingleChildScrollView(child: _modeCard()),
+                      ),
                     ),
                   ),
                   _counterSection(),

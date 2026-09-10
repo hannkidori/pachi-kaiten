@@ -314,12 +314,13 @@ class _NewCounterSheetState extends State<_NewCounterSheet> {
           ),
           const SizedBox(height: 10),
           Numpad(
-            keyHeight: 44,
+            keyHeight: 52,
             onKey: (k) => setState(() => _typed = applyKey(_typed, k)),
+            commit: NumpadCommit(
+              label: '計測\nスタート',
+              onTap: () => Navigator.pop(context, int.tryParse(_typed) ?? 0),
+            ),
           ),
-          const SizedBox(height: 12),
-          _primaryButton('この台で計測開始',
-              onTap: () => Navigator.pop(context, int.tryParse(_typed) ?? 0)),
         ],
       ),
     );
@@ -327,21 +328,6 @@ class _NewCounterSheetState extends State<_NewCounterSheet> {
 }
 
 // ---------------- 共有ボタン ----------------
-Widget _primaryButton(String label,
-    {required VoidCallback onTap, double height = 52}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: height,
-      alignment: Alignment.center,
-      decoration: AppTheme.cta(radius: 11),
-      child: Text(label,
-          style: AppTheme.sans(
-              size: 16, weight: FontWeight.w700, color: AppColors.text)),
-    ),
-  );
-}
-
 /// 主役ボタン(暗い塗り + ミント枠)。「終了する」等に使う。
 Widget _gradientButton(String label,
     {required VoidCallback onTap, double height = 58}) {

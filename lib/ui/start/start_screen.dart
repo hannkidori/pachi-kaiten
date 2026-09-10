@@ -60,6 +60,7 @@ class _StartScreenState extends State<StartScreen> {
   double _ballPrice = 4.0;
   bool _loading = true;
   bool _starting = false;
+  bool _picking = false; // 打ち始めシートを開いている最中
 
   /// 機種名検索の入力欄。テンキーとシステムキーボードは同時に使わないので、
   /// 打ち始めの入力に移るときに閉じる必要がある(閉じないとキーボードが
@@ -148,7 +149,16 @@ class _StartScreenState extends State<StartScreen> {
 
   /// 機種を選ぶ → (ボーダー未登録ならその場で入力) → 打ち始めシート → 計測開始。
   Future<void> _pickAndStart(Machine m) async {
-    if (_starting) return;
+    if (_starting || _picking) return; // 行の連打でシートを重ねない
+    _picking = true;
+    try {
+      await _pickAndStartInner(m);
+    } finally {
+      if (mounted) _picking = false;
+    }
+  }
+
+  Future<void> _pickAndStartInner(Machine m) async {
     _dismissKeyboard();
     var machine = m;
     // 現在の貸玉スロットが未入力なら、その場で入力を求めて保存(育つマスタ)。
