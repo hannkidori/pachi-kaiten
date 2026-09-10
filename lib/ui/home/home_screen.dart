@@ -174,6 +174,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: AppTheme.sans(size: 12.5, color: AppColors.text)),
         backgroundColor: AppColors.surface,
         behavior: SnackBarBehavior.floating,
+        // フッターの上に浮かせる。ここを空けないと 2 回目に押すべき「破棄」
+        // ボタン自体をスナックバーが覆ってしまい、破棄できなくなる。
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 96),
         duration: const Duration(milliseconds: 2600),
       ));
       _discardTimer?.cancel();
