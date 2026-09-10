@@ -10,6 +10,7 @@ class SettingsRepository {
   static const kBallPrice = 'ball_price'; // グローバル貸玉(4.0 / 1.0)
   static const kReviewStage = 'review_stage'; // レビュー依頼を出した回数(0..3)
   static const kReviewWaited = 'review_waited'; // 好条件待ちで見送った計測回数
+  static const kReviewBaseCount = 'review_base_count'; // 数え始めの決定回数
 
   Future<String?> getString(String key) async {
     final rows =
@@ -65,4 +66,15 @@ class SettingsRepository {
 
   Future<void> setReviewWaited(int n) =>
       setString(kReviewWaited, n.toString());
+
+  /// レビュー依頼を数え始めた時点の決定回数。null なら未設定(＝これから決める)。
+  /// 累計ではなくここからの増分でしきい値を見るため、機能が無かった頃から
+  /// 使っている人が一気に 3 段を消化してしまうのを防げる。
+  Future<int?> reviewBaseCount() async {
+    final v = await getString(kReviewBaseCount);
+    return v == null ? null : int.tryParse(v);
+  }
+
+  Future<void> setReviewBaseCount(int n) =>
+      setString(kReviewBaseCount, n.toString());
 }

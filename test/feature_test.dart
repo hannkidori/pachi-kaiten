@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pachi_kaiten/models/entry.dart';
 import 'package:pachi_kaiten/models/machine.dart';
+import 'package:pachi_kaiten/models/trace.dart';
 import 'package:pachi_kaiten/repositories/entry_repository.dart';
 import 'package:pachi_kaiten/repositories/machine_repository.dart';
 import 'package:pachi_kaiten/repositories/settings_repository.dart';
@@ -134,7 +135,7 @@ void main() {
   });
 
   group('レビュー依頼(iOS)', () {
-    group('資格 — 決定の累計回数', () {
+    group('資格 — 基準からの決定回数', () {
       test('しきい値は 50 / 500 / 1000 の 3 段(iOS の年3回上限に合わせる)', () {
         expect(kReviewMilestones, [50, 500, 1000]);
       });
@@ -225,6 +226,137 @@ void main() {
         await settings.setReviewWaited(2);
         expect(await settings.reviewStage(), 1);
         expect(await settings.reviewWaited(), 2);
+      });
+
+      test('数え始めの基準は未設定なら null', () async {
+        expect(await settings.reviewBaseCount(), isNull);
+        await settings.setReviewBaseCount(120);
+        expect(await settings.reviewBaseCount(), 120);
+      });
+    });
+
+    group('判定の通し(evaluate)', () {
+      late Database db;
+      late EntryRepository entries;
+      late SettingsRepository settings;
+      late ReviewPrompt prompt;
+
+      setUp(() async {
+        db = await openTestDb();
+        entries = EntryRepository(db);
+        settings = SettingsRepository(db);
+        prompt = ReviewPrompt(entries: entries, settings: settings);
+      });
+      tearDown(() async => db.close());
+
+      /// 決定を [n] 件積む。
+      Future<void> addCounts(int n) async {
+        for (var i = 0; i < n; i++) {
+          await entries.insert(Entry(
+              sessionId: 1,
+              type: EntryType.count,
+              counter: i,
+              createdAt: 's'));
+        }
+      }
+
+      /// ボーダーを超えて終えた計測の履歴。
+      Trace good({int rotations = 300}) => Trace(
+            id: 1,
+            date: '2026-09-10',
+            machineName: 'P大海物語5',
+            rotationRate: 20.0,
+            borderDiff: 1.5,
+            totalRotations: rotations,
+            consumedYen: 15000,
+            bonusCount: 0,
+            createdAt: 's',
+          );
+
+      /// ボーダーに届かなかった計測の履歴。
+      Trace bad() => Trace(
+            id: 1,
+            date: '2026-09-10',
+            machineName: 'P大海物語5',
+            rotationRate: 16.0,
+            borderDiff: -0.5,
+            totalRotations: 300,
+            consumedYen: 15000,
+            bonusCount: 0,
+            createdAt: 's',
+          );
+
+      test('更新直後は基準を決めるだけで依頼しない', () async {
+        // レビュー機能が無かった頃からの決定が積み上がっている状態。
+        await addCounts(1200);
+        expect(await prompt.evaluate(good()), isFalse);
+        expect(await settings.reviewBaseCount(), 1200); // ここが基準
+        expect(await settings.reviewStage(), 0); // 段は消費していない
+      });
+
+      test('累計ではなく基準からの増分で数える', () async {
+        await addCounts(1200);
+        await prompt.evaluate(good()); // 基準を 1200 に決める
+        expect(await prompt.evaluate(good()), isFalse); // まだ +0
+
+        await addCounts(49);
+        expect(await prompt.evaluate(good()), isFalse); // +49 で足りない
+
+        await addCounts(1);
+        expect(await prompt.evaluate(good()), isTrue); // +50 で 1 段目
+        expect(await settings.reviewStage(), 1);
+      });
+
+      test('1 段目の直後に 2 段目が続けて出ない', () async {
+        await addCounts(1200);
+        await prompt.evaluate(good()); // 基準 1200
+        await addCounts(50);
+        expect(await prompt.evaluate(good()), isTrue); // 1 段目
+
+        // 累計は 1250 だが、基準からは +50。2 段目には 500 必要。
+        expect(await prompt.evaluate(good()), isFalse);
+        await addCounts(449);
+        expect(await prompt.evaluate(good()), isFalse);
+        await addCounts(1);
+        expect(await prompt.evaluate(good()), isTrue); // +500 で 2 段目
+        expect(await settings.reviewStage(), 2);
+      });
+
+      test('新規ユーザーは 50 回で 1 段目に届く', () async {
+        await addCounts(5); // 初回の計測ぶん
+        expect(await prompt.evaluate(good()), isFalse); // 基準 5
+        await addCounts(50);
+        expect(await prompt.evaluate(good()), isTrue);
+      });
+
+      test('ボーダー割れは見送り、5 回目で妥協する', () async {
+        await addCounts(1);
+        await prompt.evaluate(good()); // 基準 1
+        await addCounts(50);
+
+        for (var i = 1; i <= 4; i++) {
+          expect(await prompt.evaluate(bad()), isFalse, reason: '$i 回目は見送り');
+          expect(await settings.reviewWaited(), i);
+        }
+        expect(await prompt.evaluate(bad()), isTrue); // 5 回目で妥協
+        expect(await settings.reviewWaited(), 0); // 出したら待ち回数は戻る
+      });
+
+      test('総回転が少ない計測は待ち回数にも数えない', () async {
+        await addCounts(1);
+        await prompt.evaluate(good());
+        await addCounts(50);
+        expect(await prompt.evaluate(good(rotations: 50)), isFalse);
+        expect(await settings.reviewWaited(), 0); // 消費していない
+        expect(await settings.reviewStage(), 0);
+      });
+
+      test('3 段消化後は何度終えても出さない', () async {
+        await settings.setReviewStage(3);
+        await addCounts(9999);
+        expect(await prompt.evaluate(good()), isFalse);
+        // 打ち止め後は基準の書き込みもしない。
+        expect(await settings.reviewBaseCount(), isNull);
       });
     });
   });

@@ -28,8 +28,11 @@ import UIKit
         }
         if #available(iOS 14.0, *) {
           // 前面のウィンドウシーンに紐づけて出す(iOS 14+ の作法)。
+          // 先に UIWindowScene へ絞ってから前面のものを探す(順序が逆だと、
+          // 前面のシーンが UIWindowScene でなかったときに取り逃がす)。
           let scene = UIApplication.shared.connectedScenes
-            .first { $0.activationState == .foregroundActive } as? UIWindowScene
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
           guard let scene = scene else {
             result(false)
             return
