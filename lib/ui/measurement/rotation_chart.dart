@@ -51,7 +51,9 @@ class RotationChart extends StatelessWidget {
 
   static const double _label = 16;
   static const double _barGap = 6;
-  static const double _maxBar = 100; // デザイン指定のグラフ高さ
+  // デザイン指定は 100 だが、実機で見ると縦に間延びした。
+  // 変更前(48)との中間に置く。
+  static const double _maxBar = 72;
 
   /// 設計上の理想の高さ(これ以上は与えられても使わない)。
   static const double maxTotal = _maxBar + _barGap + _label;
