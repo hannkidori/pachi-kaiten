@@ -406,9 +406,11 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             text: ' ・ ',
             style: AppTheme.mono(size: 12, color: AppColors.muted)));
       }
-      spans.add(TextSpan(
-          text: '${items[i].$1} ',
-          style: AppTheme.mono(size: 12, color: AppColors.muted)));
+      if (items[i].$1.isNotEmpty) {
+        spans.add(TextSpan(
+            text: '${items[i].$1} ',
+            style: AppTheme.mono(size: 12, color: AppColors.muted)));
+      }
       spans.add(TextSpan(
           text: items[i].$2,
           style: AppTheme.mono(
@@ -433,14 +435,16 @@ class _MeasurementScreenState extends State<MeasurementScreen>
           const Spacer(),
           _rateBlock(st),
           const Spacer(),
-          Flexible(
-            flex: 6,
-            child: SizedBox(
-              height: 100,
-              child: RotationChart(stats: st, controller: _chartCtrl),
+          if (st.segments.isNotEmpty) ...[
+            Flexible(
+              flex: 6,
+              child: SizedBox(
+                height: 100,
+                child: RotationChart(stats: st, controller: _chartCtrl),
+              ),
             ),
-          ),
-          const Spacer(),
+            const Spacer(),
+          ],
         ],
       ),
     );
@@ -457,7 +461,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(fmtRate(st.rotationRate),
+              Text(st.rotationRate == null ? '--' : fmtRate(st.rotationRate),
                   style: AppTheme.mono(
                       size: 104,
                       weight: FontWeight.w700,

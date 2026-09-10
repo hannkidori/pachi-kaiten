@@ -99,10 +99,7 @@ class RotationChart extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('千円分ごとの回転',
-                          style: AppTheme.sans(
-                              size: 9, color: AppColors.mutedDark)),
-                      if (hasBorder)
+if (hasBorder)
                         Text('B=${border.toStringAsFixed(1)}',
                             style: AppTheme.mono(
                                 size: 9, color: AppColors.mutedDark)),
