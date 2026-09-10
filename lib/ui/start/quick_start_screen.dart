@@ -84,7 +84,6 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
                     ),
                   ),
                   _counterSection(),
-                  _startButton(),
                 ],
               ),
       ),
@@ -214,33 +213,17 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
           ),
           const SizedBox(height: 8),
           Numpad(
-            keyHeight: _compact ? 40 : 44,
+            keyHeight: _compact ? 44 : 52,
             spacing: _compact ? 6 : 8,
             onKey: (k) => setState(() => _counter = applyKey(_counter, k)),
+            // スタートもテンキーの左列に収め、左手だけで開始まで完結させる。
+            commit: NumpadCommit(
+              label: '計測\nスタート',
+              onTap: _start,
+              enabled: !_starting,
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _startButton() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-      child: Opacity(
-        opacity: _starting ? 0.5 : 1,
-        child: GestureDetector(
-          onTap: _starting ? null : _start,
-          child: Container(
-            height: 56,
-            alignment: Alignment.center,
-            decoration: AppTheme.cta(radius: 12),
-            child: Text('計測スタート',
-                style: AppTheme.sans(
-                    size: 16,
-                    weight: FontWeight.w700,
-                    color: AppColors.text)),
-          ),
-        ),
       ),
     );
   }
