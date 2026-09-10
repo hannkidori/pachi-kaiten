@@ -158,17 +158,13 @@ Widget _primaryButton(String label, VoidCallback? onTap) {
     child: Container(
       height: 52,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        // 有効=シアン、無効=暗いグレー(押せないことを配色で明示)。
-        color: enabled ? AppColors.accentDeep : AppColors.surface,
-        border: enabled ? null : Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(12),
-      ),
+      // 有効=暗い塗り+ミント枠、無効=枠も文字も落とす(押せないことを配色で明示)。
+      decoration: AppTheme.cta(enabled: enabled, radius: 12),
       child: Text(label,
           style: AppTheme.sans(
               size: 15,
               weight: FontWeight.w700,
-              color: enabled ? AppColors.accentInk : AppColors.mutedDark)),
+              color: AppTheme.ctaInk(enabled))),
     ),
   );
 }

@@ -334,18 +334,15 @@ Widget _primaryButton(String label,
     child: Container(
       height: height,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: AppColors.accentDeep,
-        borderRadius: BorderRadius.circular(11),
-      ),
+      decoration: AppTheme.cta(radius: 11),
       child: Text(label,
           style: AppTheme.sans(
-              size: 16, weight: FontWeight.w700, color: AppColors.accentInk)),
+              size: 16, weight: FontWeight.w700, color: AppColors.text)),
     ),
   );
 }
 
-/// 主役ボタン(シアングラデ)。v2 の「終了する」等に使う。
+/// 主役ボタン(暗い塗り + ミント枠)。「終了する」等に使う。
 Widget _gradientButton(String label,
     {required VoidCallback onTap, double height = 58}) {
   return GestureDetector(
@@ -353,10 +350,7 @@ Widget _gradientButton(String label,
     child: Container(
       height: height,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        gradient: AppColors.accentGradient,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: AppTheme.cta(radius: 12),
       // 機種名を含むラベル(「〇〇のままリセット」)は長くなり得るので、
       // ボタンの外へはみ出さないよう 1 行に収める。
       child: Padding(
@@ -366,7 +360,7 @@ Widget _gradientButton(String label,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: AppTheme.sans(
-                size: 16, weight: FontWeight.w700, color: AppColors.accentInk)),
+                size: 16, weight: FontWeight.w700, color: AppColors.text)),
       ),
     ),
   );

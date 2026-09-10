@@ -13,7 +13,6 @@ import '../../models/session.dart';
 import '../start/quick_start_screen.dart';
 import '../start/start_screen.dart';
 import '../widgets/counter_field.dart';
-import '../widgets/glow_background.dart';
 import '../widgets/numpad.dart';
 import 'end_sheets.dart';
 import 'rotation_chart.dart';
@@ -248,8 +247,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlowBackground.measurement(
-        child: SafeArea(
+      body: SafeArea(
         child: ListenableBuilder(
           listenable: c,
           builder: (context, _) {
@@ -273,7 +271,6 @@ class _MeasurementScreenState extends State<MeasurementScreen>
             );
           },
         ),
-      ),
       ),
     );
   }
@@ -712,7 +709,9 @@ class _MeasurementScreenState extends State<MeasurementScreen>
       child: Container(
         height: _compact ? 50 : 56,
         decoration: BoxDecoration(
-          color: hit ? AppColors.hitButton : AppColors.accentDeep,
+          color: hit ? const Color(0xFF2A1E06) : AppColors.accentFill,
+          border: Border.all(
+              color: hit ? AppColors.hit : AppColors.accent, width: 1.5),
           borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.center,
@@ -724,7 +723,7 @@ class _MeasurementScreenState extends State<MeasurementScreen>
                     size: 19,
                     weight: FontWeight.w700,
                     letterSpacing: 0.2 * 19,
-                    color: hit ? AppColors.hitInk : AppColors.accentInk)),
+                    color: hit ? AppColors.hit : AppColors.text)),
             const SizedBox(width: 10),
             Text(
               hit ? '復帰後の値' : c.commitSubLabel,
@@ -825,16 +824,17 @@ class _MeasurementScreenState extends State<MeasurementScreen>
         height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: primary ? AppColors.accentDeep : Colors.transparent,
-          border:
-              primary ? null : Border.all(color: const Color(0x2EFFFFFF)),
+          color: primary ? AppColors.accentFill : Colors.transparent,
+          border: Border.all(
+              color: primary ? AppColors.accent : AppColors.border,
+              width: primary ? 1.5 : 1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(label,
             style: AppTheme.sans(
                 size: primary ? 14.5 : 13.5,
                 weight: primary ? FontWeight.w700 : FontWeight.w400,
-                color: primary ? AppColors.accentInk : AppColors.textStrong)),
+                color: primary ? AppColors.text : AppColors.textStrong)),
       ),
     );
   }

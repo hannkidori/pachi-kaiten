@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/counter_field.dart';
-import '../widgets/glow_background.dart';
 import '../widgets/numpad.dart';
 import 'machine_sheets.dart';
 import 'start_screen.dart';
@@ -70,8 +69,7 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlowBackground.start(
-        child: SafeArea(
+      body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -89,7 +87,6 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
                   _startButton(),
                 ],
               ),
-      ),
       ),
     );
   }
@@ -236,15 +233,12 @@ class _QuickStartScreenState extends State<QuickStartScreen> {
           child: Container(
             height: 56,
             alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: AppColors.accentGradient,
-              borderRadius: BorderRadius.circular(12),
-            ),
+            decoration: AppTheme.cta(radius: 12),
             child: Text('計測スタート',
                 style: AppTheme.sans(
                     size: 16,
                     weight: FontWeight.w700,
-                    color: AppColors.accentInk)),
+                    color: AppColors.text)),
           ),
         ),
       ),

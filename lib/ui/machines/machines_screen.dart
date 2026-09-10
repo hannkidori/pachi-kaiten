@@ -5,7 +5,6 @@ import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../start/machine_sheets.dart';
 import '../widgets/dashed_border.dart';
-import '../widgets/glow_background.dart';
 
 /// 機種マスタの管理画面。登録・編集・削除をここに集約する。
 ///
@@ -87,8 +86,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlowBackground.list(
-        child: SafeArea(
+      body: SafeArea(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : Column(
@@ -102,7 +100,6 @@ class _MachinesScreenState extends State<MachinesScreen> {
                   ],
                 ),
         ),
-      ),
     );
   }
 

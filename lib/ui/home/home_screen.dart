@@ -16,7 +16,6 @@ import '../measurement/measurement_screen.dart';
 import '../settings/settings_screen.dart';
 import '../start/quick_start_screen.dart';
 import '../start/start_screen.dart';
-import '../widgets/glow_background.dart';
 
 /// ホーム。計測開始までの通過点。計測中セッションがあれば復帰カードを最優先表示し、
 /// なければ前回比ヒーロー + 円形「計測スタート」を出す。
@@ -211,8 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlowBackground.home(
-        child: SafeArea(
+      body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _loading
@@ -232,7 +230,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
         ),
-      ),
       ),
     );
   }
@@ -479,15 +476,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(
-          gradient: AppColors.accentGradient,
+        decoration: const BoxDecoration(
+          color: AppColors.bg,
           shape: BoxShape.circle,
+          border: Border.fromBorderSide(
+              BorderSide(color: AppColors.accent, width: 2)),
+          // 面を光らせず、外側に薄いハローだけ置く(デザイン: 0 0 0 14px 5%)。
           boxShadow: [
-            BoxShadow(
-              color: AppColors.accent.withValues(alpha: 0.28),
-              blurRadius: 34,
-              spreadRadius: 1,
-            ),
+            BoxShadow(color: AppColors.accentHalo, spreadRadius: 14),
           ],
         ),
         child: Column(
@@ -497,7 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: AppTheme.sans(
                     size: size >= 200 ? 20 : 18,
                     weight: FontWeight.w700,
-                    color: AppColors.accentInk)),
+                    color: AppColors.text)),
             if (sub != null) ...[
               const SizedBox(height: 4),
               Text(sub,

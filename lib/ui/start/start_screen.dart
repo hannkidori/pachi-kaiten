@@ -6,7 +6,6 @@ import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/counter_field.dart';
 import '../widgets/dashed_border.dart';
-import '../widgets/glow_background.dart';
 import '../widgets/numpad.dart';
 import 'machine_sheets.dart';
 
@@ -195,8 +194,7 @@ class _StartScreenState extends State<StartScreen> {
       // テンキーはアプリ独自入力でシステムキーボードと同時使用しない。キーボード
       // 降下の過渡で本文が縮み、出現直後のカウンタ欄+テンキーが一瞬溢れるのを防ぐ。
       resizeToAvoidBottomInset: false,
-      body: GlowBackground.start(
-        child: SafeArea(
+      body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : Column(
@@ -213,7 +211,6 @@ class _StartScreenState extends State<StartScreen> {
                   _startButton(),
                 ],
               ),
-      ),
       ),
     );
   }
@@ -492,20 +489,14 @@ class _StartScreenState extends State<StartScreen> {
         child: Container(
           height: 56,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            // 有効=シアングラデ、無効=暗いグレー(押せないことを配色で明示)。
-            gradient: enabled ? AppColors.accentGradient : null,
-            color: enabled ? null : AppColors.surface,
-            border:
-                enabled ? null : Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(12),
-          ),
+          // 有効=暗い塗り+ミント枠、無効=枠も文字も落とす。
+          decoration: AppTheme.cta(enabled: enabled, radius: 12),
           child: Text(
             label,
             style: AppTheme.sans(
                 size: 16,
                 weight: FontWeight.w700,
-                color: enabled ? AppColors.accentInk : AppColors.mutedDark),
+                color: AppTheme.ctaInk(enabled)),
           ),
         ),
       ),

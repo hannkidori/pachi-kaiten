@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../services/app_services.dart';
 import '../../services/other_apps.dart';
 import '../../theme/app_theme.dart';
-import '../widgets/glow_background.dart';
 
 /// 設定。加算単位 / 貸玉(4円・1円) / スリープ防止。
 /// 機種の登録・編集・削除は機種ページ(ホーム下部)に集約した。
@@ -65,8 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: GlowBackground.list(
-        child: SafeArea(
+      body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
@@ -92,7 +90,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ],
               ),
-      ),
       ),
     );
   }
@@ -233,8 +230,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Switch(
             value: _keepAwake,
             onChanged: _setKeepAwake,
-            activeTrackColor: AppColors.accentDeep,
-            activeThumbColor: AppColors.accentSoft,
+            activeTrackColor: AppColors.accentGraph,
+            activeThumbColor: AppColors.accent,
           ),
         ],
       ),
