@@ -278,6 +278,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 22),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(22),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -286,10 +290,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(width: 8),
               Text('›', style: AppTheme.sans(size: 16, color: AppColors.faint)),
             ],
-          ),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(22),
           ),
         ),
       ),
