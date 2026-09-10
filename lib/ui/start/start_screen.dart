@@ -4,9 +4,7 @@ import '../../models/machine.dart';
 import '../../models/session.dart';
 import '../../services/app_services.dart';
 import '../../theme/app_theme.dart';
-import '../widgets/counter_field.dart';
 import '../widgets/dashed_border.dart';
-import '../widgets/numpad.dart';
 import 'machine_sheets.dart';
 
 /// 計測開始の結果。呼び出し側(ホーム)がこれを受けて計測画面を開く。
@@ -58,7 +56,6 @@ class _StartScreenState extends State<StartScreen> {
   List<int> _recentIds = [];
   Machine? _machine;
   String _query = '';
-  String _counter = '';
   int _addUnit = 1000;
   double _ballPrice = 4.0;
   bool _loading = true;
@@ -91,8 +88,6 @@ class _StartScreenState extends State<StartScreen> {
   /// システムキーボードを閉じる(テンキーを覆わせない)。
   void _dismissKeyboard() => FocusScope.of(context).unfocus();
 
-  /// 短い画面(iPhone SE 第1世代 / iPhone 8 相当)ではテンキー等を詰める。
-  bool get _compact => MediaQuery.sizeOf(context).height < 620;
 
   Future<void> _load({int? keepSelectedId}) async {
     final machines = await s.machines.all();
@@ -121,11 +116,9 @@ class _StartScreenState extends State<StartScreen> {
   List<Machine> get _visibleMachines =>
       orderMachines(all: _machines, recentIds: _recentIds, query: _query);
 
-  bool get _canStart => _machine != null && !_starting;
-
   String _stamp() => DateTime.now().toIso8601String();
 
-  /// 新しい機種を登録(名前 + 現在の貸玉スロットのボーダー)→ 選択状態にする。
+  /// 新しい機種を登録し、そのまま打ち始め入力へ進む。
   /// 検索文字列は名前欄に引き継ぐ(「「◯◯」で登録」の表示どおりに動かす)。
   Future<void> _register() async {
     final res = await showRegisterMachine(
@@ -134,29 +127,30 @@ class _StartScreenState extends State<StartScreen> {
       initialName: _query.trim().isEmpty ? null : _query.trim(),
       existingNames: _machines.map((m) => m.name).toList(),
     );
-    if (res == null) return;
+    if (res == null || !mounted) return;
     final base = Machine(name: res.name, updatedAt: _stamp());
-    final saved =
-        await s.machines.insert(applyBorder(base, _ballPrice, res.border, _stamp()));
-    await _load(keepSelectedId: saved.id);
+    final saved = await s.machines
+        .insert(applyBorder(base, _ballPrice, res.border, _stamp()));
+    if (!mounted) return;
+    await _load();
+    if (!mounted) return;
+    await _pickAndStart(saved);
   }
 
-  /// 選択中機種の現在スロットのボーダーを上書き編集。
-  Future<void> _editBorder(Machine m) async {
-    final entered = await showBorderPrompt(
-      context,
-      machineName: m.name,
-      ballPrice: _ballPrice,
-      current: m.borderFor(_ballPrice),
-    );
-    if (entered == null) return;
-    await s.machines.update(applyBorder(m, _ballPrice, entered, _stamp()));
-    await _load(keepSelectedId: m.id);
+  /// 貸玉を切り替える。設定と同じグローバル値を書き換えるので、
+  /// 設定画面から変えたときと結果は同じになる。
+  Future<void> _setBallPrice(double price) async {
+    if (price == _ballPrice) return;
+    await s.settings.setBallPrice(price);
+    if (!mounted) return;
+    setState(() => _ballPrice = price);
   }
 
-  Future<void> _start() async {
-    if (!_canStart) return;
-    var machine = _machine!;
+  /// 機種を選ぶ → (ボーダー未登録ならその場で入力) → 打ち始めシート → 計測開始。
+  Future<void> _pickAndStart(Machine m) async {
+    if (_starting) return;
+    _dismissKeyboard();
+    var machine = m;
     // 現在の貸玉スロットが未入力なら、その場で入力を求めて保存(育つマスタ)。
     if (machine.borderFor(_ballPrice) == null) {
       final entered = await showBorderPrompt(
@@ -165,14 +159,19 @@ class _StartScreenState extends State<StartScreen> {
         ballPrice: _ballPrice,
         current: null,
       );
-      if (entered == null) return;
+      if (entered == null || !mounted) return;
       machine = applyBorder(machine, _ballPrice, entered, _stamp());
       await s.machines.update(machine);
-      if (!mounted) return; // ボーダー入力〜保存の間に離脱した場合
+      if (!mounted) return;
     }
+    final counter = await showStartCounterSheet(
+      context,
+      machine: machine,
+      ballPrice: _ballPrice,
+    );
+    if (counter == null || !mounted) return;
     setState(() => _starting = true);
     try {
-      final counter = int.tryParse(_counter) ?? 0;
       final session = await s.sessionService.start(
         machine: machine,
         ballPrice: _ballPrice,
@@ -191,25 +190,20 @@ class _StartScreenState extends State<StartScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      // テンキーはアプリ独自入力でシステムキーボードと同時使用しない。キーボード
-      // 降下の過渡で本文が縮み、出現直後のカウンタ欄+テンキーが一瞬溢れるのを防ぐ。
-      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _topBar(),
-                  _searchField(),
-                  _registerRow(),
-                  const SizedBox(height: 8),
-                  Expanded(child: _machineList()),
-                  // 機種を選ぶまで打ち始め入力欄・テンキーは出さない
-                  // (機種を選ぶ → 打ち始め → 開始 の順序を視覚的に強制)。
-                  if (_machine != null) _counterSection(),
-                  _startButton(),
-                ],
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _topBar(),
+                    _searchField(),
+                    Expanded(child: _machineList()),
+                    _registerRow(),
+                  ],
+                ),
               ),
       ),
     );
@@ -217,36 +211,72 @@ class _StartScreenState extends State<StartScreen> {
 
   Widget _topBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 20, 6),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back, color: AppColors.textDim),
-          ),
-          Text('計測開始',
-              style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
-          const Spacer(),
-          // 貸玉はグローバル設定。ここでは適用スロットの目安として読み取り専用表示。
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(999),
+      padding: const EdgeInsets.only(top: 16, bottom: 20),
+      child: SizedBox(
+        height: 40,
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.of(context).maybePop(),
+              behavior: HitTestBehavior.opaque,
+              child: Text('‹',
+                  style: AppTheme.sans(size: 20, color: AppColors.muted)),
             ),
-            child: Text(ballLabel(_ballPrice),
-                style: AppTheme.mono(size: 11, color: AppColors.textDim)),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('機種を選んで計測',
+                  style:
+                      AppTheme.sans(size: 16, weight: FontWeight.w700)),
+            ),
+            _ballSegment(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 貸玉の切替。設定と同じ値を書き換える(表示だけの飾りにはしない)。
+  Widget _ballSegment() {
+    return Container(
+      height: 32,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ballOption('4円', 4.0, _ballPrice > 1.5),
+          _ballOption('1円', 1.0, _ballPrice <= 1.5),
         ],
+      ),
+    );
+  }
+
+  Widget _ballOption(String label, double price, bool on) {
+    return GestureDetector(
+      onTap: on ? null : () => _setBallPrice(price),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: on ? AppColors.keyActive : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(label,
+            style: AppTheme.mono(
+                size: 12,
+                color: on ? AppColors.text : AppColors.mutedDark)),
       ),
     );
   }
 
   // ---------- 機種検索 ----------
   Widget _searchField() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 8),
+    return SizedBox(
+      height: 48,
       child: TextField(
         focusNode: _searchFocus,
         style: AppTheme.sans(size: 14),
@@ -254,55 +284,57 @@ class _StartScreenState extends State<StartScreen> {
         onChanged: (v) => setState(() => _query = v),
         decoration: InputDecoration(
           isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
           prefixIcon:
-              const Icon(Icons.search, size: 18, color: AppColors.muted),
+              const Icon(Icons.search, size: 18, color: AppColors.mutedDark),
           hintText: '機種名で検索',
-          hintStyle: AppTheme.sans(size: 13, color: AppColors.mutedDark),
+          hintStyle: AppTheme.sans(size: 14, color: AppColors.mutedDark),
           filled: true,
           fillColor: AppColors.surfaceAlt,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
+          ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: AppColors.border),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(9),
-            borderSide: const BorderSide(color: Color(0x5956D9F0)),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.accentBorderSoft),
           ),
         ),
       ),
     );
   }
 
+  /// 「＋ 新しい機種を登録」。リストの下に固定で置く。
   Widget _registerRow() {
-    // 検索ヒット0件のときは検索文字列を登録名に引き継ぐ。
     final q = _query.trim();
     final noHit = q.isNotEmpty && _visibleMachines.isEmpty;
-    final label = noHit ? '「$q」で登録' : '新しい機種を登録';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      child: GestureDetector(
-        onTap: _register,
-        behavior: HitTestBehavior.opaque,
-        child: DashedBorderBox(
-          color: const Color(0x8C56D9F0),
-          radius: 10,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: [
-                const Icon(Icons.add, size: 17, color: AppColors.accent),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.sans(
-                          size: 13,
-                          weight: FontWeight.w600,
-                          color: AppColors.accentSoft)),
-                ),
-              ],
-            ),
+    return GestureDetector(
+      onTap: _register,
+      behavior: HitTestBehavior.opaque,
+      child: DashedBorderBox(
+        color: AppColors.accentBorderSoft,
+        radius: 16,
+        strokeWidth: 1.5,
+        child: SizedBox(
+          height: 56,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('＋',
+                  style: AppTheme.sans(size: 18, color: AppColors.accent)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(noHit ? '「$q」で登録' : '新しい機種を登録',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        AppTheme.sans(size: 15, color: AppColors.accent)),
+              ),
+            ],
           ),
         ),
       ),
@@ -312,192 +344,61 @@ class _StartScreenState extends State<StartScreen> {
   Widget _machineList() {
     final list = _visibleMachines;
     if (list.isEmpty) {
-      final zeroMachines = _machines.isEmpty;
       return Center(
         child: Text(
-          zeroMachines
-              ? '打つ台を登録して始めましょう'
+          _machines.isEmpty
+              ? 'まだ機種がありません'
               : (_query.trim().isEmpty ? '機種がありません' : '該当する機種がありません'),
           style: AppTheme.sans(size: 12, color: AppColors.mutedDark),
         ),
       );
     }
     final showRecentLabel = _query.trim().isEmpty && _recentIds.isNotEmpty;
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: list.length,
-      itemBuilder: (context, i) {
-        final m = list[i];
-        final isRecentHead =
-            showRecentLabel && i == 0 && _recentIds.contains(m.id);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isRecentHead)
-              Padding(
-                padding: const EdgeInsets.only(top: 2, bottom: 6),
-                child: Text('最近使った機種',
-                    style:
-                        AppTheme.sans(size: 10, color: AppColors.mutedDark)),
-              ),
-            _machineRow(m),
-          ],
-        );
-      },
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        if (showRecentLabel)
+          Padding(
+            padding: const EdgeInsets.only(top: 24, bottom: 8),
+            child: Text('最近使った機種',
+                style: AppTheme.sans(
+                    size: 11,
+                    color: AppColors.mutedDark,
+                    letterSpacing: 0.15 * 11)),
+          )
+        else
+          const SizedBox(height: 12),
+        for (final m in list) _machineRow(m),
+        const SizedBox(height: 12),
+      ],
     );
   }
 
+  /// 1 行 = 機種名 + ボーダー + ▶。タップで打ち始めシートへ。
   Widget _machineRow(Machine m) {
-    final selected = m.id == _machine?.id;
     final border = m.borderFor(_ballPrice);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          GestureDetector(
-            onTap: () {
-              // 機種を選んだ = 検索は済んだ。次は打ち始めの入力なので閉じる。
-              _dismissKeyboard();
-              setState(() => _machine = m);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(
-                color: selected ? const Color(0x1456D9F0) : Colors.transparent,
-                border: Border.all(
-                    color:
-                        selected ? const Color(0x7356D9F0) : AppColors.border),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-            children: [
-              if (selected) ...[
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                      color: AppColors.accent, shape: BoxShape.circle),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(m.name,
-                    style: AppTheme.sans(size: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-              ),
-              const SizedBox(width: 8),
-              if (selected)
-                // 選択中はボーダーの現在値を表示し、その場で上書き編集可能。
-                GestureDetector(
-                  onTap: () => _editBorder(m),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        border == null
-                            ? 'B --'
-                            : 'B ${border.toStringAsFixed(1)}',
-                        style: AppTheme.mono(
-                            size: 11,
-                            color: border == null
-                                ? AppColors.down
-                                : AppColors.textDim),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.edit, size: 13, color: AppColors.muted),
-                    ],
-                  ),
-                )
-              else
-                Text(border == null ? 'B --' : 'B ${border.toStringAsFixed(1)}',
-                    style: AppTheme.mono(
-                        size: 11,
-                        color: border == null
-                            ? AppColors.faint
-                            : AppColors.muted)),
-                ],
-              ),
-            ),
-          ),
-          // 選択したが現在の貸玉スロットが未登録: その場入力を促すアンバー注記。
-          if (selected && border == null)
-            GestureDetector(
-              onTap: () => _editBorder(m),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(4, 6, 4, 2),
-                child: Text(
-                  '${ballLabel(_ballPrice)}のボーダー未登録 — タップして入力',
-                  style: AppTheme.sans(size: 10.5, color: AppColors.hit),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // ---------- 打ち始めカウンタ ----------
-  Widget _counterSection() {
     return GestureDetector(
-      // 打ち始めの入力に触れたらシステムキーボードを閉じる。CounterField は
-      // 表示専用でタップを受けないため、この層で受けて閉じる。
-      onTap: _dismissKeyboard,
+      onTap: () => _pickAndStart(m),
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('台のデータ表示機の回転数をそのまま入力',
-              style: AppTheme.sans(size: 9.5, color: AppColors.muted)),
-          const SizedBox(height: 6),
-          CounterField(
-            typed: _counter,
-            prevCounter: null, // 打ち始め=前回「—」
-            placeholder: '打ち始めの数字',
-            height: _compact ? 52 : 58,
-            // 検索欄にフォーカスがある間はカーソルを 2 つ光らせない。
-            showCursor: !_searchFocus.hasFocus,
-          ),
-          const SizedBox(height: 8),
-          Numpad(
-            keyHeight: _compact ? 40 : 44,
-            spacing: _compact ? 6 : 8,
-            onKey: (k) {
-              _dismissKeyboard(); // 覆われたままのキー操作でも確実に閉じる
-              setState(() => _counter = applyKey(_counter, k));
-            },
-          ),
-        ],
-      ),
-      ),
-    );
-  }
-
-  Widget _startButton() {
-    final enabled = _canStart;
-    // ラベルは「機種が選ばれているか」だけで決める(開始処理中に
-    // 「機種を選択してください」へ化けないように)。
-    final label = _machine == null ? '機種を選択してください' : '計測スタート';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-      child: GestureDetector(
-        onTap: enabled ? _start : null,
-        child: Container(
-          height: 56,
-          alignment: Alignment.center,
-          // 有効=暗い塗り+ミント枠、無効=枠も文字も落とす。
-          decoration: AppTheme.cta(enabled: enabled, radius: 12),
-          child: Text(
-            label,
-            style: AppTheme.sans(
-                size: 16,
-                weight: FontWeight.w700,
-                color: AppTheme.ctaInk(enabled)),
-          ),
+      child: Container(
+        height: 60,
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.hairFaint)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(m.name,
+                  style: AppTheme.sans(size: 15),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 12),
+            Text('B ${border == null ? '--' : border.toStringAsFixed(1)}',
+                style: AppTheme.mono(size: 13, color: AppColors.muted)),
+            const SizedBox(width: 12),
+            Text('▶', style: AppTheme.sans(size: 12, color: AppColors.accent)),
+          ],
         ),
       ),
     );

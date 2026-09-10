@@ -17,7 +17,6 @@ import 'package:pachi_kaiten/ui/measurement/measurement_screen.dart';
 import 'package:pachi_kaiten/ui/measurement/rotation_chart.dart';
 import 'package:pachi_kaiten/ui/settings/settings_screen.dart';
 import 'package:pachi_kaiten/ui/start/start_screen.dart';
-import 'package:pachi_kaiten/ui/widgets/counter_field.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'helpers/test_db.dart';
@@ -532,9 +531,9 @@ void main() {
     expect(find.text('機種なしでリセット'), findsNothing); // 主役と同義のため非表示
   });
 
-  // ---- スタート画面: 機種名検索(システムキーボード)と打ち始め(テンキー) ----
-  group('スタート画面のキーボードとカーソル', () {
-    Future<void> openWithMachine(WidgetTester tester) async {
+  // ---- 機種選択: 行タップ → 打ち始めシート ----
+  group('機種選択', () {
+    Future<void> open(WidgetTester tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
@@ -547,62 +546,53 @@ void main() {
       await tester.runAsync(
           () async => Future<void>.delayed(const Duration(milliseconds: 60)));
       await tester.pump();
-      // 機種を選ぶまで打ち始め欄は出ない。
-      await tester.tap(find.text('P大海物語5'));
-      await tester.pump();
     }
 
-    /// 機種名検索(システムキーボードを出す唯一の入力欄)にフォーカスがあるか。
-    bool searchFocused(WidgetTester tester) => tester
-        .widget<EditableText>(find.byType(EditableText))
-        .focusNode
-        .hasFocus;
+    testWidgets('確定ボタンを持たず、行タップで打ち始めシートが開く', (tester) async {
+      await open(tester);
+      // 下部の確定ボタンは廃止した。
+      expect(find.text('計測スタート'), findsNothing);
+      expect(find.text('機種を選んで計測'), findsOneWidget);
+      expect(find.text('新しい機種を登録'), findsOneWidget);
 
-    testWidgets('機種を選ぶとキーボードが閉じる(テンキーを覆わせない)', (tester) async {
-      await openWithMachine(tester);
-      expect(find.byType(CounterField), findsOneWidget);
+      await tester.tap(find.text('P大海物語5'));
+      // 打ち始め欄のカーソルが点滅し続けるので settle は使えない。
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
+      // シートには機種名・ボーダー・打ち始め欄・テンキーが出る。
+      expect(find.text('打ち始めの数字'), findsOneWidget);
+      expect(find.text('B 16.5 · 4円'), findsOneWidget);
+      expect(find.text('数字を入れずにスタート（0から）'), findsOneWidget);
+      expect(tester.takeException(), isNull); // はみ出さない
+    });
+
+    testWidgets('検索中に機種を選んでもキーボードが残らない', (tester) async {
+      await open(tester);
       await tester.tap(find.byType(TextField));
       await tester.pump();
-      expect(searchFocused(tester), isTrue);
+      expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .focusNode
+              .hasFocus,
+          isTrue);
 
       await tester.tap(find.text('P大海物語5'));
       await tester.pump();
-      expect(searchFocused(tester), isFalse,
-          reason: '機種を選んだら検索は済み。次はテンキー入力なので閉じる');
+      // シートのテンキーとシステムキーボードは同時に使わない。
+      expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .focusNode
+              .hasFocus,
+          isFalse);
     });
 
-    testWidgets('検索中はカーソルを 2 つ光らせない', (tester) async {
-      await openWithMachine(tester);
-      expect(find.byKey(kCounterCursorKey), findsOneWidget); // 通常は出る
-
-      await tester.tap(find.byType(TextField));
-      await tester.pump();
-      expect(find.byKey(kCounterCursorKey), findsNothing,
-          reason: '検索欄にフォーカスがある間は打ち始め側のカーソルを消す');
-    });
-
-    testWidgets('打ち始め欄をタップするとキーボードが閉じてカーソルが戻る', (tester) async {
-      await openWithMachine(tester);
-      await tester.tap(find.byType(TextField));
-      await tester.pump();
-      expect(find.byKey(kCounterCursorKey), findsNothing);
-
-      // CounterField は表示専用。親の GestureDetector が閉じる役を持つ。
-      await tester.tap(find.byType(CounterField));
-      await tester.pump();
-      expect(find.byKey(kCounterCursorKey), findsOneWidget);
-    });
-
-    testWidgets('テンキーを押しても閉じる(覆われた状態からの復帰)', (tester) async {
-      await openWithMachine(tester);
-      await tester.tap(find.byType(TextField));
-      await tester.pump();
-
-      await tester.tap(find.text('7'));
-      await tester.pump();
-      expect(find.text('7'), findsWidgets); // 入力が入る
-      expect(find.byKey(kCounterCursorKey), findsOneWidget);
+    testWidgets('貸玉セグメントが出る(設定と同じ値を切り替える)', (tester) async {
+      await open(tester);
+      expect(find.text('4円'), findsOneWidget);
+      expect(find.text('1円'), findsOneWidget);
     });
   });
 

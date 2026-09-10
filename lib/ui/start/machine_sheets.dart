@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../../models/machine.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/counter_field.dart';
+import '../widgets/numpad.dart';
 
 /// 貸玉単価の表示ラベル。4.0→「4円」, 1.0→「1円」。
 String ballLabel(double ballPrice) => ballPrice <= 1.5 ? '1円' : '4円';
@@ -520,6 +522,137 @@ class _MachineEditSheetState extends State<_MachineEditSheet> {
             ),
           ],
         )),
+      ),
+    );
+  }
+}
+
+// ---------------- 打ち始めの数字入力(ボトムシート) ----------------
+
+/// 台のデータ表示機に出ている回転数をそのまま入れて計測を始める。
+///
+/// 戻り値は打ち始めの回転数。「数字を入れずにスタート」は 0。
+/// シート外タップ・下スワイプ・「変更」は null(= 機種選びに戻る)。
+Future<int?> showStartCounterSheet(
+  BuildContext context, {
+  required Machine machine,
+  required double ballPrice,
+}) {
+  return showModalBottomSheet<int>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: const Color(0xA6000000),
+    builder: (_) =>
+        _StartCounterSheet(machine: machine, ballPrice: ballPrice),
+  );
+}
+
+class _StartCounterSheet extends StatefulWidget {
+  final Machine machine;
+  final double ballPrice;
+  const _StartCounterSheet({required this.machine, required this.ballPrice});
+
+  @override
+  State<_StartCounterSheet> createState() => _StartCounterSheetState();
+}
+
+class _StartCounterSheetState extends State<_StartCounterSheet> {
+  String _typed = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final border = widget.machine.borderFor(widget.ballPrice);
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.machine.name,
+                          style: AppTheme.sans(
+                              size: 16, weight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Text(
+                          'B ${border == null ? '--' : border.toStringAsFixed(1)}'
+                          ' · ${ballLabel(widget.ballPrice)}',
+                          style: AppTheme.mono(
+                              size: 12, color: AppColors.mutedDark)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 機種を選び直す = このシートを閉じる。
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  behavior: HitTestBehavior.opaque,
+                  child: Text('変更',
+                      style:
+                          AppTheme.sans(size: 13, color: AppColors.muted)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text('台のデータ表示機の回転数をそのまま入力',
+                style: AppTheme.sans(size: 12, color: AppColors.mutedDark)),
+            const SizedBox(height: 14),
+            CounterField(
+              typed: _typed,
+              prevCounter: null, // 打ち始め=前回「—」
+              placeholder: '打ち始めの数字',
+              height: 56,
+            ),
+            const SizedBox(height: 14),
+            Numpad(
+              keyHeight: 52,
+              onKey: (k) => setState(() => _typed = applyKey(_typed, k)),
+              commit: NumpadCommit(
+                label: '計測\nスタート',
+                onTap: () =>
+                    Navigator.pop(context, int.tryParse(_typed) ?? 0),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Center(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context, 0),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text('数字を入れずにスタート（0から）',
+                      style: AppTheme.sans(
+                          size: 12, color: AppColors.mutedDark)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
