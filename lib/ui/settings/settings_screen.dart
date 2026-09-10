@@ -213,9 +213,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 overflow: TextOverflow.ellipsis),
           ),
           const SizedBox(width: 8),
+          // 計測画面の「1000 ⇅」と同じ 3 択に揃える。
+          _segment('500', _addUnit == 500, () => _setAddUnit(500)),
+          const SizedBox(width: 6),
           _segment('1000', _addUnit == 1000, () => _setAddUnit(1000)),
           const SizedBox(width: 6),
-          _segment('500', _addUnit == 500, () => _setAddUnit(500)),
+          _segment('2000', _addUnit == 2000, () => _setAddUnit(2000)),
         ],
       ),
     );
