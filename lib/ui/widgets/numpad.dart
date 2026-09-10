@@ -27,7 +27,7 @@ class NumpadCommit {
 
 /// 左手配置テンキー(4 列 × 4 行)。
 ///
-/// - 左列: 上 2 行が ⌫、下 2 行が [commit](主役ボタン)。
+/// - 左列: 上 1 行が ⌫、下 3 行が [commit](主役ボタン)。
 ///   [commit] が無い画面では ⌫ が 4 行を占める(空きマスを作らない)。
 /// - 右 3 列: 1 2 3 / 4 5 6 / 7 8 9 / 00 0 C。
 ///
@@ -59,13 +59,12 @@ class Numpad extends StatelessWidget {
         ? _digit('⌫', height: keyHeight * 4 + spacing * 3)
         : Column(
             children: [
-              SizedBox(
-                height: keyHeight * 2 + spacing,
-                child: _digit('⌫'),
-              ),
+              // ⌫ は 1 行、決定は 3 行。主役の確定操作を大きく取り、
+              // 親指を動かさずに押せる面積を稼ぐ。合計は右の 4 行と揃う。
+              SizedBox(height: keyHeight, child: _digit('⌫')),
               SizedBox(height: spacing),
               SizedBox(
-                height: keyHeight * 2 + spacing,
+                height: keyHeight * 3 + spacing * 2,
                 child: _commitKey(commit!),
               ),
             ],
