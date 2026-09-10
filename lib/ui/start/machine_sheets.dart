@@ -294,7 +294,11 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         child: SingleChildScrollView(
-          child: Column(
+          // 画面の半分までは開く(内容にぴったり張り付いた窮屈な見た目にしない)。
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                minHeight: MediaQuery.sizeOf(context).height * 0.5),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -329,22 +333,34 @@ class _MachineFormSheetState extends State<_MachineFormSheet> {
               const SizedBox(height: 20),
               _cta(),
               if (widget.allowStart) ...[
-                const SizedBox(height: 12),
-                Center(
-                  child: GestureDetector(
-                    onTap: _canSubmit ? () => _submit(startNow: false) : null,
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text('登録のみ',
-                          style: AppTheme.sans(
-                              size: 13, color: AppColors.mutedDark)),
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 10),
+                _secondaryButton('登録のみ',
+                    onTap: _canSubmit ? () => _submit(startNow: false) : null),
               ],
             ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 従のボタン(枠線だけ)。「登録のみ」= 計測に入らずリストへ戻る。
+  Widget _secondaryButton(String label, {VoidCallback? onTap}) {
+    final on = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Opacity(
+        opacity: on ? 1 : 0.4,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(label,
+              style: AppTheme.sans(size: 15, color: AppColors.textStrong)),
         ),
       ),
     );
