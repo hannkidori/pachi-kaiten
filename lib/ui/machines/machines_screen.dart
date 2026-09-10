@@ -59,6 +59,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
       ballPrice: _ballPrice,
       initialName: _query.trim().isEmpty ? null : _query.trim(),
       existingNames: _machines.map((m) => m.name).toList(),
+      allowStart: false, // ここは管理画面。登録してそのまま計測には入らない
     );
     if (res == null) return;
     final base = Machine(name: res.name, updatedAt: _stamp());

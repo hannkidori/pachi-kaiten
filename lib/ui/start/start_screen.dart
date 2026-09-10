@@ -133,7 +133,7 @@ class _StartScreenState extends State<StartScreen> {
         .insert(applyBorder(base, _ballPrice, res.border, _stamp()));
     if (!mounted) return;
     await _load();
-    if (!mounted) return;
+    if (!mounted || !res.startNow) return; // 「登録のみ」はリストに戻るだけ
     await _pickAndStart(saved);
   }
 

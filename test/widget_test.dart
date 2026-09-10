@@ -16,6 +16,7 @@ import 'package:pachi_kaiten/ui/measurement/end_sheets.dart';
 import 'package:pachi_kaiten/ui/measurement/measurement_screen.dart';
 import 'package:pachi_kaiten/ui/measurement/rotation_chart.dart';
 import 'package:pachi_kaiten/ui/settings/settings_screen.dart';
+import 'package:pachi_kaiten/ui/start/machine_sheets.dart';
 import 'package:pachi_kaiten/ui/start/start_screen.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -593,6 +594,87 @@ void main() {
       await open(tester);
       expect(find.text('4円'), findsOneWidget);
       expect(find.text('1円'), findsOneWidget);
+    });
+  });
+
+  // ---- 機種登録シート(ステッパー + プリセット) ----
+  group('機種登録シート', () {
+    late RegisterMachineResult? result;
+
+    Future<void> open(WidgetTester tester, {bool allowStart = true}) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      result = null;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: TextButton(
+                onPressed: () async => result = await showRegisterMachine(
+                    context,
+                    ballPrice: 4.0,
+                    allowStart: allowStart),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('初期値 18.5 から ＋/− が 0.1 刻みで動く', (tester) async {
+      await open(tester);
+      expect(find.text('18.5'), findsOneWidget);
+
+      await tester.tap(find.text('＋'));
+      await tester.pump();
+      expect(find.text('18.6'), findsOneWidget);
+
+      await tester.tap(find.text('−'));
+      await tester.pump();
+      await tester.tap(find.text('−'));
+      await tester.pump();
+      expect(find.text('18.4'), findsOneWidget);
+    });
+
+    testWidgets('プリセットで即その値になる', (tester) async {
+      await open(tester);
+      await tester.tap(find.text('22.0'));
+      await tester.pump();
+      // プリセット行と中央値の 2 か所に出る。
+      expect(find.text('22.0'), findsNWidgets(2));
+    });
+
+    testWidgets('機種名が空のうちは登録できない', (tester) async {
+      await open(tester);
+      await tester.tap(find.text('登録して計測スタート'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(result, isNull); // シートは閉じない
+      expect(find.text('登録して計測スタート'), findsOneWidget);
+    });
+
+    testWidgets('「登録のみ」は計測に入らない印を返す', (tester) async {
+      await open(tester);
+      await tester.enterText(find.byType(TextField), 'P大海物語5');
+      await tester.pump();
+
+      await tester.tap(find.text('登録のみ'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(result!.name, 'P大海物語5');
+      expect(result!.border, 18.5);
+      expect(result!.startNow, isFalse);
+    });
+
+    testWidgets('管理画面からは計測に入る導線を出さない', (tester) async {
+      await open(tester, allowStart: false);
+      expect(find.text('登録する'), findsOneWidget);
+      expect(find.text('登録して計測スタート'), findsNothing);
+      expect(find.text('登録のみ'), findsNothing);
     });
   });
 

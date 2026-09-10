@@ -47,25 +47,43 @@ Machine applyBorder(Machine m, double ballPrice, double value, String stamp) {
       : m.copyWith(border4: value, updatedAt: stamp);
 }
 
+/// 機種登録シートの結果。
+/// [startNow] が true なら「登録して計測スタート」、false なら「登録のみ」。
+class RegisterMachineResult {
+  final String name;
+  final double border;
+  final bool startNow;
+  const RegisterMachineResult({
+    required this.name,
+    required this.border,
+    required this.startNow,
+  });
+}
+
 /// 新しい機種を登録する(名前 + 現在の貸玉スロットのボーダー1値)。
-/// 確定すると (name, border) を返す。キャンセルは null。
+/// キャンセルは null。
 ///
 /// [initialName] は検索文字列の引き継ぎ(「「◯◯」で登録」の約束を果たす)。
 /// [existingNames] は重複登録を防ぐための既存機種名。
-Future<({String name, double border})?> showRegisterMachine(
+/// [allowStart] が false のとき(機種の管理画面)は、そのまま計測に入る導線を
+/// 出さず「登録する」だけにする。
+Future<RegisterMachineResult?> showRegisterMachine(
   BuildContext context, {
   required double ballPrice,
   String? initialName,
   List<String> existingNames = const [],
+  bool allowStart = true,
 }) {
-  return showModalBottomSheet<({String name, double border})>(
+  return showModalBottomSheet<RegisterMachineResult>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    barrierColor: const Color(0xA6000000),
     builder: (_) => _MachineFormSheet(
       ballPrice: ballPrice,
       initialName: initialName,
       existingNames: existingNames,
+      allowStart: allowStart,
     ),
   );
 }
@@ -176,10 +194,12 @@ class _MachineFormSheet extends StatefulWidget {
   final double ballPrice;
   final String? initialName;
   final List<String> existingNames;
+  final bool allowStart;
   const _MachineFormSheet({
     required this.ballPrice,
     this.initialName,
     this.existingNames = const [],
+    this.allowStart = true,
   });
 
   @override
@@ -187,97 +207,276 @@ class _MachineFormSheet extends StatefulWidget {
 }
 
 class _MachineFormSheetState extends State<_MachineFormSheet> {
+  /// ステッパーの下限・上限・刻み。現実的なボーダーの範囲に収める。
+  static const _min = 10.0;
+  static const _max = 40.0;
+  static const _step = 0.1;
+  static const _presets = [17.0, 18.0, 19.0, 20.0, 22.0];
+
   late final TextEditingController _name = TextEditingController(
     // 検索文字列を引き継ぐ(カーソルは末尾に置く)。
     text: widget.initialName ?? '',
   )..selection = TextSelection.collapsed(
       offset: (widget.initialName ?? '').length);
-  final _border = TextEditingController();
+
+  double _border = 18.5;
+  Timer? _repeat;
 
   @override
   void dispose() {
+    _repeat?.cancel();
     _name.dispose();
-    _border.dispose();
     super.dispose();
   }
 
-  /// 同名の機種が既に登録されているか(重複登録を防ぐ)。
   bool get _duplicate => isDuplicateName(_name.text, widget.existingNames);
+  bool get _canSubmit => _name.text.trim().isNotEmpty && !_duplicate;
 
-  bool get _valid =>
-      _name.text.trim().isNotEmpty &&
-      !_duplicate &&
-      parseBorder(_border.text) != null;
+  void _nudge(double delta) {
+    setState(() {
+      // 0.1 刻みの加算で誤差が溜まらないよう、毎回丸め直す。
+      final next = (_border + delta).clamp(_min, _max);
+      _border = (next * 10).roundToDouble() / 10;
+    });
+  }
 
-  void _submit() {
-    if (!_valid) return;
-    Navigator.of(context)
-        .pop((name: _name.text.trim(), border: parseBorder(_border.text)!));
+  /// 長押しで連続。押している間だけ繰り返す。
+  void _startRepeat(double delta) {
+    _nudge(delta);
+    _repeat?.cancel();
+    _repeat = Timer.periodic(
+        const Duration(milliseconds: 90), (_) => _nudge(delta));
+  }
+
+  void _stopRepeat() {
+    _repeat?.cancel();
+    _repeat = null;
+  }
+
+  void _submit({required bool startNow}) {
+    if (!_canSubmit) return;
+    Navigator.pop(
+      context,
+      RegisterMachineResult(
+        name: _name.text.trim(),
+        border: _border,
+        startNow: startNow,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // キーボードのぶんだけ持ち上げる(シート内の入力欄を覆わせない)。
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        decoration: _sheetDeco(),
-        // キーボードが出た状態でも収まらない場合はスクロールで逃がす
-        // (小さい画面 / 文字拡大でシートが溢れるのを防ぐ)。
-        child: SingleChildScrollView(child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _grip(),
-            Text('新しい機種を登録',
-                style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text('ボーダーは今の貸玉(${ballLabel(widget.ballPrice)})用として保存されます',
-                style: AppTheme.sans(size: 11, color: AppColors.muted)),
-            const SizedBox(height: 16),
-            Text('機種名', style: AppTheme.sans(size: 11, color: AppColors.muted)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _name,
-              autofocus: true,
-              inputFormatters: machineNameInputFormatters,
-              style: AppTheme.sans(size: 14),
-              cursorColor: AppColors.accent,
-              onChanged: (_) => setState(() {}),
-              decoration: _fieldDeco('例: ハネデリ'),
-            ),
-            if (_duplicate) ...[
-              const SizedBox(height: 6),
-              Text('同じ名前の機種が既に登録されています',
-                  style: AppTheme.sans(size: 11, color: AppColors.down)),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('新しい機種を登録',
+                  style: AppTheme.sans(size: 16, weight: FontWeight.w700)),
+              const SizedBox(height: 20),
+              _label('機種名'),
+              const SizedBox(height: 8),
+              _nameField(),
+              if (_duplicate) ...[
+                const SizedBox(height: 6),
+                Text('同じ名前の機種がすでにあります',
+                    style: AppTheme.sans(size: 11, color: AppColors.down)),
+              ],
+              const SizedBox(height: 20),
+              _label('ボーダー（回/k・${ballLabel(widget.ballPrice)}）'),
+              const SizedBox(height: 8),
+              _stepperRow(),
+              const SizedBox(height: 10),
+              _presetRow(),
+              const SizedBox(height: 20),
+              _cta(),
+              if (widget.allowStart) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: GestureDetector(
+                    onTap: _canSubmit ? () => _submit(startNow: false) : null,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text('登録のみ',
+                          style: AppTheme.sans(
+                              size: 13, color: AppColors.mutedDark)),
+                    ),
+                  ),
+                ),
+              ],
             ],
-            const SizedBox(height: 14),
-            Text('ボーダー (回/k・${ballLabel(widget.ballPrice)})',
-                style: AppTheme.sans(size: 11, color: AppColors.muted)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _border,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: borderInputFormatters,
-              style: AppTheme.mono(size: 16),
-              cursorColor: AppColors.accent,
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _submit(),
-              decoration: _fieldDeco('例: 18.3'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _label(String text) => Text(text,
+      style: AppTheme.sans(
+          size: 11, color: AppColors.mutedDark, letterSpacing: 0.15 * 11));
+
+  Widget _nameField() {
+    return SizedBox(
+      height: 52,
+      child: TextField(
+        controller: _name,
+        autofocus: true,
+        style: AppTheme.sans(size: 16),
+        cursorColor: AppColors.accent,
+        cursorWidth: 2,
+        inputFormatters: machineNameInputFormatters,
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+          filled: true,
+          fillColor: AppColors.surfaceAlt,
+          hintText: '機種名',
+          hintStyle: AppTheme.sans(size: 16, color: AppColors.faint),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepperRow() {
+    return Row(
+      children: [
+        _stepKey('−', -_step),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            height: 56,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 20),
-            _primaryButton('登録して計測開始', _valid ? _submit : null),
-          ],
-        )),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(_border.toStringAsFixed(1),
+                    style: AppTheme.mono(size: 32, weight: FontWeight.w700)),
+                const SizedBox(width: 6),
+                Text('±0.1',
+                    style:
+                        AppTheme.mono(size: 12, color: AppColors.mutedDark)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        _stepKey('＋', _step),
+      ],
+    );
+  }
+
+  /// −／＋ キー。押しっぱなしで連続して動く。
+  Widget _stepKey(String label, double delta) {
+    return GestureDetector(
+      onTap: () => _nudge(delta),
+      onLongPressStart: (_) => _startRepeat(delta),
+      onLongPressEnd: (_) => _stopRepeat(),
+      onLongPressCancel: _stopRepeat,
+      child: Container(
+        width: 56,
+        height: 56,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(label,
+            style: AppTheme.sans(size: 22, color: AppColors.textStrong)),
+      ),
+    );
+  }
+
+  Widget _presetRow() {
+    return Row(
+      children: [
+        for (var i = 0; i < _presets.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _border = _presets[i]),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(_presets[i].toStringAsFixed(1),
+                      style:
+                          AppTheme.mono(size: 12, color: AppColors.muted)),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _cta() {
+    final on = _canSubmit;
+    return GestureDetector(
+      onTap: on ? () => _submit(startNow: widget.allowStart) : null,
+      child: Opacity(
+        opacity: on ? 1 : 0.4,
+        child: Container(
+          height: 56,
+          alignment: Alignment.center,
+          decoration: AppTheme.cta(enabled: on),
+          child: Text(widget.allowStart ? '登録して計測スタート' : '登録する',
+              style: AppTheme.sans(
+                  size: 16,
+                  weight: FontWeight.w700,
+                  letterSpacing: 0.1 * 16,
+                  color: AppTheme.ctaInk(on))),
+        ),
       ),
     );
   }
 }
 
-/// 既存機種のスロット別ボーダー入力(未設定時の要求・上書き編集で共用)。
 class _BorderPromptSheet extends StatefulWidget {
   final String machineName;
   final double ballPrice;
