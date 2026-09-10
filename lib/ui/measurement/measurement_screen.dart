@@ -481,16 +481,22 @@ class _MeasurementScreenState extends State<MeasurementScreen>
 
   /// 機種なし(ボーダー未登録)のとき、比較が出ない理由をその場に置く。
   Widget _noBorderPill() {
+    // alignment を持たせると Container が親いっぱいに伸びるため付けない。
+    // 内容にフィットさせ、中央寄せは呼び出し側の Column に任せる。
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(15),
       ),
-      child: Text('機種を選ぶとボーダー比較',
-          style: AppTheme.sans(size: 13, color: AppColors.mutedDark)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('機種を選ぶとボーダー比較',
+              style: AppTheme.sans(size: 13, color: AppColors.mutedDark)),
+        ],
+      ),
     );
   }
 
